@@ -7,19 +7,38 @@ import type { UserProfile } from './types';
 function App() {
   const [user, setUser] = useState<UserProfile | null>(() => authStorage.getUser());
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
+  const [isOffline, setIsOffline] = useState<boolean>(() => authStorage.isOffline());
 
   useEffect(() => {
     const token = authStorage.getToken();
     if (token) {
+      // If it's an offline token, skip the /me call (it would fail for offline tokens
+      // if the server is unreachable). Trust the cached user data.
+      if (token.startsWith('offline_')) {
+        setIsOffline(true);
+        setIsCheckingAuth(false);
+        return;
+      }
+
       api.getMe()
         .then((profile) => {
           setUser(profile);
           authStorage.setUser(profile);
+          setIsOffline(false);
+          authStorage.setOffline(false);
         })
         .catch(() => {
-          // Token invalid or expired
-          authStorage.clear();
-          setUser(null);
+          // Token invalid or expired — but if we have cached user data
+          // and the server is simply unreachable, stay logged in offline
+          const cachedUser = authStorage.getUser();
+          if (cachedUser) {
+            setUser(cachedUser);
+            setIsOffline(true);
+            authStorage.setOffline(true);
+          } else {
+            authStorage.clear();
+            setUser(null);
+          }
         })
         .finally(() => {
           setIsCheckingAuth(false);
@@ -29,13 +48,15 @@ function App() {
     }
   }, []);
 
-  const handleAuthSuccess = (authenticatedUser: UserProfile) => {
+  const handleAuthSuccess = (authenticatedUser: UserProfile, offline?: boolean) => {
     setUser(authenticatedUser);
+    setIsOffline(offline ?? false);
   };
 
   const handleLogout = () => {
     api.logout();
     setUser(null);
+    setIsOffline(false);
   };
 
   const handleUserUpdated = (updatedUser: UserProfile) => {
@@ -69,6 +90,7 @@ function App() {
       user={user}
       onLogout={handleLogout}
       onUserUpdated={handleUserUpdated}
+      isOffline={isOffline}
     />
   );
 }

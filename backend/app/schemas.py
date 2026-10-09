@@ -9,6 +9,7 @@ class HealthResponse(BaseModel):
     ollama_model: str
     ollama_model_available: bool
     database_connected: bool = True
+    offline_mode: bool = False
 
 # Auth Schemas
 class UserProfileResponse(BaseModel):
@@ -33,6 +34,7 @@ class AuthTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserProfileResponse
+    offline: bool = False  # True when login was via cached offline credentials
 
 # Source Chunk Schemas
 class SourceChunkResponse(BaseModel):

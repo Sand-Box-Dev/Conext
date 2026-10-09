@@ -4,6 +4,7 @@ export interface HealthStatus {
   ollama_model: string;
   ollama_model_available: boolean;
   database_connected?: boolean;
+  offline_mode?: boolean;
 }
 
 export interface UserProfile {
@@ -17,6 +18,7 @@ export interface AuthResponse {
   access_token: string;
   token_type: string;
   user: UserProfile;
+  offline?: boolean;
 }
 
 export interface DocumentItem {

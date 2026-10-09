@@ -34,17 +34,40 @@ if SUPABASE_URL and SUPABASE_ANON_KEY:
         logger.warning(f"Could not initialize Supabase Anon Client: {e}")
 
 
+def _resolve_offline_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    If *token* is an offline token (starts with 'offline_'), look up the user
+    from the local offline auth cache and return a user dict.
+    """
+    if not token.startswith("offline_"):
+        return None
+    # Token format: offline_{user_id}_{random_hex}
+    parts = token.split("_", 2)  # ["offline", "{user_id}", "{rest}"]
+    if len(parts) < 3:
+        return None
+    user_id = parts[1]
+    from .offline_auth import get_offline_user_by_id
+    return get_offline_user_by_id(user_id)
+
+
 def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[Dict[str, Any]]:
     """
     Extracts the authenticated Supabase user from the Bearer JWT token if present.
     Returns None if no token was provided, enabling seamless anonymous or guest usage.
+    Also supports offline tokens for cached credential sessions.
     """
     if not credentials:
         return None
 
     token = credentials.credentials
+
+    # --- Handle offline tokens ---
+    offline_user = _resolve_offline_token(token)
+    if offline_user:
+        return offline_user
+
     try:
         # Try Supabase API auth verification first or fallback to JWT decode
         if supabase_admin:

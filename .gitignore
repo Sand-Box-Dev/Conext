@@ -5,3 +5,9 @@ __pycache__/
 venv/
 backend/data/uploads/
 backend/.env
+backend/app/routers/__pycache__
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.db
+backend/app/data/

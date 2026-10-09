@@ -14,7 +14,7 @@ import { api } from '../services/api';
 import type { UserProfile } from '../types';
 
 interface AuthModalProps {
-  onSuccess: (user: UserProfile) => void;
+  onSuccess: (user: UserProfile, offline?: boolean) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
@@ -61,15 +61,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         if (pendingSignupName) {
           const user = await api.updateProfile({ display_name: pendingSignupName });
           setPendingSignupName('');
-          onSuccess(user);
+          onSuccess(user, res.offline);
         } else {
-          onSuccess(res.user);
+          onSuccess(res.user, res.offline);
         }
       } else {
         const res = await api.signUp(email.trim(), password);
         if (res.access_token) {
           const user = await api.updateProfile({ display_name: displayName.trim() });
-          onSuccess(user);
+          onSuccess(user, res.offline);
         } else {
           setPendingSignupName(displayName.trim());
           setNotice('Account registered! Check your email if confirmation is required, then sign in to finish setup.');

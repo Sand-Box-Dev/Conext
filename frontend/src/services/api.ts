@@ -18,6 +18,7 @@ const API_BASE = 'http://127.0.0.1:8000/api';
 
 const TOKEN_KEY = 'conext_auth_token';
 const USER_KEY = 'conext_auth_user';
+const OFFLINE_KEY = 'conext_offline_mode';
 
 export const authStorage = {
   getToken(): string | null {
@@ -38,9 +39,16 @@ export const authStorage = {
   setUser(user: UserProfile) {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
+  isOffline(): boolean {
+    return localStorage.getItem(OFFLINE_KEY) === 'true';
+  },
+  setOffline(offline: boolean) {
+    localStorage.setItem(OFFLINE_KEY, offline ? 'true' : 'false');
+  },
   clear() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(OFFLINE_KEY);
   },
 };
 
@@ -70,6 +78,7 @@ export const api = {
     if (data.access_token) {
       authStorage.setToken(data.access_token);
       authStorage.setUser(data.user);
+      authStorage.setOffline(data.offline ?? false);
     }
     return data;
   },
@@ -89,6 +98,7 @@ export const api = {
     if (data.access_token) {
       authStorage.setToken(data.access_token);
       authStorage.setUser(data.user);
+      authStorage.setOffline(data.offline ?? false);
     }
     return data;
   },
@@ -116,6 +126,16 @@ export const api = {
 
   logout() {
     authStorage.clear();
+  },
+
+  async getAuthStatus(): Promise<{ database_online: boolean; supabase_reachable: boolean; mode: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/auth/status`);
+      if (!res.ok) return { database_online: false, supabase_reachable: false, mode: 'offline' };
+      return res.json();
+    } catch {
+      return { database_online: false, supabase_reachable: false, mode: 'offline' };
+    }
   },
 
   // Health check
@@ -252,13 +272,6 @@ export const api = {
     return res.json();
   },
 
-  async getDocument(id: number): Promise<DocumentItem> {
-    const res = await fetch(`${API_BASE}/documents/${id}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to fetch document');
-    return res.json();
-  },
 
   async getOriginalDocumentFile(id: number): Promise<Blob> {
     const res = await fetch(`${API_BASE}/documents/${id}/file`, {
