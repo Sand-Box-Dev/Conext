@@ -4,6 +4,7 @@ import type {
   ConceptMapData,
   ConceptDetail,
   ReviewerAnswer,
+  ReviewerCitation,
   EssayGrade,
   StudyExam,
   StudyMode,
@@ -342,6 +343,91 @@ export const api = {
       throw new Error(err.detail || 'Could not answer that question');
     }
     return res.json();
+  },
+
+  async askReviewerStream(
+    documentId: number,
+    question: string,
+    callbacks: {
+      onCitations?: (citations: ReviewerCitation[]) => void;
+      onChunk?: (delta: string) => void;
+      onDone?: (result: ReviewerAnswer) => void;
+      onError?: (error: Error) => void;
+    }
+  ): Promise<void> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ question }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not connect to chat stream' }));
+      throw new Error(err.detail || 'Could not connect to chat stream');
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error('No readable stream available in response.');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulatedAnswer = '';
+    let citations: ReviewerCitation[] = [];
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            currentEvent = '';
+            continue;
+          }
+
+          if (trimmed.startsWith('event:')) {
+            currentEvent = trimmed.replace('event:', '').trim();
+          } else if (trimmed.startsWith('data:')) {
+            const rawData = trimmed.replace('data:', '').trim();
+            try {
+              const data = JSON.parse(rawData);
+              if (currentEvent === 'citations') {
+                citations = data as ReviewerCitation[];
+                callbacks.onCitations?.(citations);
+              } else if (currentEvent === 'chunk') {
+                const delta = data.delta || '';
+                accumulatedAnswer += delta;
+                callbacks.onChunk?.(delta);
+              } else if (currentEvent === 'done') {
+                callbacks.onDone?.({
+                  message_id: data.message_id || 0,
+                  answer: data.answer || accumulatedAnswer,
+                  citations: data.citations || citations,
+                });
+              } else if (currentEvent === 'error') {
+                callbacks.onError?.(new Error(data.detail || 'Error during streaming'));
+              }
+            } catch {
+              // Ignore partial or unparseable JSON frames
+            }
+          }
+        }
+      }
+    } catch (streamErr) {
+      callbacks.onError?.(streamErr instanceof Error ? streamErr : new Error(String(streamErr)));
+      throw streamErr;
+    }
   },
 
   async generateQuiz(documentId: number): Promise<StudyExam> {

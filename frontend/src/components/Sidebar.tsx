@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User, Search, WifiOff } from 'lucide-react';
+import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User, Search, WifiOff, HelpCircle, Layers, PenTool } from 'lucide-react';
 import conextLogo from '../assets/logo/conext-logo-256.webp';
 import type { DocumentItem, UserProfile } from '../types';
 
@@ -71,9 +71,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <nav aria-label="Study tools" className={`space-y-1 border-b border-slate-800/80 py-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
-        <button type="button" onClick={onShowQuiz} title="Quiz" aria-current={activeView === 'quiz' ? 'page' : undefined} className={navClass('quiz')}>{isCollapsed ? 'Q' : 'Quiz'}</button>
-        <button type="button" onClick={onShowFlashcards} title="Flash-Card" aria-current={activeView === 'flashcards' ? 'page' : undefined} className={navClass('flashcards')}>{isCollapsed ? 'F' : 'Flash-Card'}</button>
-        <button type="button" onClick={onShowEssay} title="Essay" aria-current={activeView === 'essay' ? 'page' : undefined} className={navClass('essay')}>{isCollapsed ? 'E' : 'Essay'}</button>
+        <button type="button" onClick={onShowQuiz} title="Quiz" aria-current={activeView === 'quiz' ? 'page' : undefined} className={navClass('quiz')}>
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          {!isCollapsed && 'Quiz'}
+        </button>
+        <button type="button" onClick={onShowFlashcards} title="Flash-Card" aria-current={activeView === 'flashcards' ? 'page' : undefined} className={navClass('flashcards')}>
+          <Layers className="h-4 w-4 shrink-0" />
+          {!isCollapsed && 'Flash-Card'}
+        </button>
+        <button type="button" onClick={onShowEssay} title="Essay" aria-current={activeView === 'essay' ? 'page' : undefined} className={navClass('essay')}>
+          <PenTool className="h-4 w-4 shrink-0" />
+          {!isCollapsed && 'Essay'}
+        </button>
       </nav>
 
       <div className="flex-1" />
