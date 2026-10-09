@@ -237,7 +237,7 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
           </div>
         ) : (
           <>
-            <div className="flex-1 space-y-7 overflow-y-auto py-8" aria-live="polite">
+            <div className="flex-1 space-y-7 overflow-y-auto no-scrollbar py-8" aria-live="polite">
               {messages.map((message, index) => (
                 <div key={`${index}-${message.role}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[90%] sm:max-w-[82%] ${message.role === 'user' ? 'user-question rounded-3xl bg-slate-800 px-5 py-3.5 text-slate-100' : 'text-slate-200'}`}>

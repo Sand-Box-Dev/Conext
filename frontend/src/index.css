@@ -382,3 +382,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #root .auth-password-toggle:hover { color: #252a33 !important; background: #e9ebef !important; }
 #root .auth-submit { min-height: 2.9rem; border-color: #171717 !important; border-radius: .8rem !important; background: #171717 !important; box-shadow: none !important; }
 #root .auth-submit:hover:not(:disabled) { border-color: #373737 !important; background: #373737 !important; }
+
+/* Hide scrollbar while keeping scroll functionality */
+.no-scrollbar,
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
