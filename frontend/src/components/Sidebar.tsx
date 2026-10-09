@@ -160,28 +160,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       </div>
 
-      {/* User Session Bar */}
-      {user && (
-        <div className="px-4 py-2.5 border-t border-slate-800/80 bg-slate-900/60 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
-              <User className="w-3.5 h-3.5" />
-            </div>
-            <span className="truncate text-slate-300 font-medium text-[11px]" title={user.email}>
-              {user.email || 'Supabase User'}
-            </span>
-          </div>
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              title="Sign Out"
-              className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* User Session Bar */}
       {user && (
