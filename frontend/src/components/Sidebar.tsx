@@ -11,9 +11,11 @@ import {
   ChevronDown,
   Plus,
   Keyboard,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { DocumentUpload } from './DocumentUpload';
-import type { DocumentItem } from '../types';
+import type { DocumentItem, UserProfile } from '../types';
 
 interface SidebarProps {
   activeView: 'dashboard' | 'library' | 'workspace';
@@ -26,6 +28,8 @@ interface SidebarProps {
   trashShortcutLabel: string;
   onUploadSuccess: (file: File) => Promise<void>;
   isUploading: boolean;
+  user?: UserProfile | null;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -39,6 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   trashShortcutLabel,
   onUploadSuccess,
   isUploading,
+  user,
+  onLogout,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -157,6 +163,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex justify-between gap-3"><span>Close dialog</span><kbd>Esc</kbd></div>
           </div>}
         </div>
+      {user && <div className={`flex items-center border-t border-slate-800/80 px-3 py-2.5 text-xs ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/20 text-indigo-400"><User className="h-3.5 w-3.5" /></span>
+          {!isCollapsed && <span className="truncate text-[11px] font-medium text-slate-300" title={user.email}>{user.email || 'Signed in'}</span>}
+        </div>
+        {!isCollapsed && onLogout && <button type="button" onClick={onLogout} title="Sign out" aria-label="Sign out" className="rounded p-1 text-slate-400 transition hover:bg-red-500/10 hover:text-red-400"><LogOut className="h-3.5 w-3.5" /></button>}
+      </div>}
       </div>
     </aside>
   );

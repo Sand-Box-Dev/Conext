@@ -1,7 +1,7 @@
 import logging
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from sqlalchemy.orm import Session
-from ..models import Document, SourceChunk, ConceptMap, ConceptNode, ConceptEdge, NodeSource
+from ..models import Document, SourceChunk, ConceptMap, ConceptNode, ConceptEdge, NodeSource, AIMemory
 from ..schemas import ExtractionResult, ConceptMapResponse, ConceptNodeResponse, ConceptEdgeResponse
 from .ollama_service import generate_concept_map_from_passages
 from .vector_service import VectorService
@@ -42,10 +42,10 @@ def build_prompt_passages(chunks: List[SourceChunk]) -> str:
         formatted.append(f"--- [Passage ID: {c.id}] (Page {c.page_number}) ---\n{c.content}\n")
     return "\n".join(formatted)
 
-async def extract_and_persist_concept_map(db: Session, document_id: int) -> ConceptMap:
+async def extract_and_persist_concept_map(db: Session, document_id: int, user_id: Optional[str] = None) -> ConceptMap:
     """
     Orchestrates passage selection, LLM inference, reference validation,
-    and SQLite persistence. Ensures chunks are vectorized prior to processing.
+    and database persistence. Ensures chunks are vectorized prior to processing.
     """
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
@@ -84,7 +84,7 @@ async def extract_and_persist_concept_map(db: Session, document_id: int) -> Conc
 
     # Create new ConceptMap
     title = raw_extraction.title if raw_extraction.title else f"Concepts: {doc.filename}"
-    new_map = ConceptMap(document_id=document_id, title=title)
+    new_map = ConceptMap(document_id=document_id, title=title, user_id=user_id)
     db.add(new_map)
     db.flush()
 
@@ -149,6 +149,17 @@ async def extract_and_persist_concept_map(db: Session, document_id: int) -> Conc
                 relationship_label=raw_edge.relationship.strip()
             )
             db.add(edge)
+
+    # Persist AI memory / synthesis context from extraction
+    concept_labels = [c.label for c in raw_extraction.concepts]
+    ai_memory = AIMemory(
+        user_id=user_id,
+        document_id=document_id,
+        memory_type="summary",
+        title=f"Extracted Concept Schema: {new_map.title}",
+        content=f"Extracted {len(node_by_label)} grounded concepts: {', '.join(concept_labels)} with {len(raw_extraction.relationships)} relationships."
+    )
+    db.add(ai_memory)
 
     db.commit()
     db.refresh(new_map)

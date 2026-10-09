@@ -23,9 +23,15 @@ import type {
   ConceptDetail,
   HealthStatus,
   ProjectFolder,
+  UserProfile,
 } from '../types';
 
-export const Workspace: React.FC = () => {
+interface WorkspaceProps {
+  user?: UserProfile | null;
+  onLogout?: () => void;
+}
+
+export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('conext.theme');
     return saved === 'dark' ? 'dark' : 'light';
@@ -353,6 +359,8 @@ export const Workspace: React.FC = () => {
         trashShortcutLabel={`${modifierLabel}+3`}
         onUploadSuccess={handleUpload}
         isUploading={isUploading}
+        user={user}
+        onLogout={onLogout}
       />
 
       {/* Center Main Workspace */}

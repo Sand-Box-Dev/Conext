@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 # Health Schema
 class HealthResponse(BaseModel):
@@ -8,6 +8,26 @@ class HealthResponse(BaseModel):
     ollama_connected: bool
     ollama_model: str
     ollama_model_available: bool
+    database_connected: bool = True
+
+# Auth Schemas
+class UserProfileResponse(BaseModel):
+    id: str
+    email: Optional[str] = None
+    role: Optional[str] = "authenticated"
+
+class SignUpRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class AuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserProfileResponse
 
 # Source Chunk Schemas
 class SourceChunkResponse(BaseModel):
@@ -69,6 +89,28 @@ class DocumentResponse(BaseModel):
     chunk_count: int = 0
     has_map: bool = False
     project_id: Optional[int] = None
+    user_id: Optional[str] = None
+
+# AI Memory & Context Schemas
+class AIMemoryCreate(BaseModel):
+    document_id: Optional[int] = None
+    memory_type: str = Field(default="insight", description="'insight', 'context', 'preference', or 'summary'")
+    title: str = Field(description="Short summary or label for this memory")
+    content: str = Field(description="Memory content, reasoning context, or key takeaway")
+    meta_info: Optional[str] = Field(default=None, description="Optional serialized JSON string for arbitrary metadata")
+
+class AIMemoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: Optional[str] = None
+    document_id: Optional[int] = None
+    memory_type: str
+    title: str
+    content: str
+    meta_info: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
 
 # Ollama LLM Extraction Schemas (Structured JSON)
 class RawConcept(BaseModel):
