@@ -13,6 +13,7 @@ import { Sidebar } from '../components/Sidebar';
 import { ConceptMap } from '../components/ConceptMap';
 import { ConceptDetails } from '../components/ConceptDetails';
 import { ReviewerChat } from '../components/ReviewerChat';
+import { CommandPalette } from '../components/CommandPalette';
 import { Dashboard } from './Dashboard';
 import { Projects } from './Projects';
 import { api } from '../services/api';
@@ -39,13 +40,22 @@ export const Workspace: React.FC = () => {
       return [];
     }
   });
+  const [trashedDocumentIds, setTrashedDocumentIds] = useState<number[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('conext.trashed-reviewers') || '[]');
+      return Array.isArray(saved) ? saved.filter((id): id is number => Number.isInteger(id)) : [];
+    } catch { return []; }
+  });
   const [projects, setProjects] = useState<ProjectFolder[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [paletteMode, setPaletteMode] = useState<'commands' | 'reviewers'>('commands');
+  const [modifierLabel] = useState(() => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘' : 'Win');
   const [chatSideView, setChatSideView] = useState<'details' | 'mindmap'>('details');
   const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'workspace'>('dashboard');
-  const [isDashboardPanelOpen, setIsDashboardPanelOpen] = useState<boolean>(true);
 
   // Concept Map state
   const [conceptMap, setConceptMap] = useState<ConceptMapData | null>(null);
@@ -70,6 +80,10 @@ export const Workspace: React.FC = () => {
   }, [recentDocumentIds]);
 
   useEffect(() => {
+    localStorage.setItem('conext.trashed-reviewers', JSON.stringify(trashedDocumentIds));
+  }, [trashedDocumentIds]);
+
+  useEffect(() => {
     localStorage.setItem('conext.theme', theme);
   }, [theme]);
 
@@ -92,12 +106,12 @@ export const Workspace: React.FC = () => {
 
       // Auto-select first document if available and none selected
       if (docs.length > 0 && selectedDocId === null) {
-        setSelectedDocId(docs[0].id);
+        setSelectedDocId(docs.find((document) => !trashedDocumentIds.includes(document.id))?.id ?? null);
       }
     } catch (e) {
       console.error(e);
     }
-  }, [selectedDocId]);
+  }, [selectedDocId, trashedDocumentIds]);
 
   useEffect(() => {
     loadInitialData();
@@ -245,11 +259,29 @@ export const Workspace: React.FC = () => {
   const isGeneratingMap = generatingMapDocId === selectedDocId;
 
   const openReviewer = (documentId: number) => {
+    if (trashedDocumentIds.includes(documentId)) return;
     setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
     setSelectedDocId(documentId);
     setActiveView('workspace');
     setIsChatOpen(false);
   };
+
+  const onTrashReviewer = (documentId: number) => {
+    setTrashedDocumentIds((current) => current.includes(documentId) ? current : [...current, documentId]);
+    setRecentDocumentIds((current) => current.filter((id) => id !== documentId));
+    setIsTrashOpen(false);
+    if (selectedDocId === documentId) {
+      const next = documents.find((document) => document.id !== documentId && !trashedDocumentIds.includes(document.id));
+      setSelectedDocId(next?.id ?? null);
+      setActiveView('dashboard');
+      setIsChatOpen(false);
+    }
+  };
+  const onRestoreReviewer = (documentId: number) => {
+    setTrashedDocumentIds((current) => current.filter((id) => id !== documentId));
+  };
+  const activeDocuments = documents.filter((document) => !trashedDocumentIds.includes(document.id));
+  const trashedDocuments = documents.filter((document) => trashedDocumentIds.includes(document.id));
 
   const askAboutReviewer = (documentId: number) => {
     setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
@@ -259,27 +291,68 @@ export const Workspace: React.FC = () => {
     setChatSideView('details');
   };
 
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = Boolean(target && (
+        target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      ));
+      const hasModifier = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (event.key === 'Escape' && isCommandPaletteOpen) {
+        event.preventDefault();
+        setIsCommandPaletteOpen(false);
+        return;
+      }
+      if (hasModifier && key === 'k') {
+        event.preventDefault();
+        setPaletteMode('commands');
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+      if (event.key === '/' && !hasModifier && !event.altKey && !isTyping) {
+        event.preventDefault();
+        setPaletteMode('reviewers');
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+      if (!hasModifier) return;
+      if (key === '1') {
+        event.preventDefault();
+        setActiveView('dashboard');
+        setIsChatOpen(false);
+      } else if (key === '2') {
+        event.preventDefault();
+        setActiveView('library');
+        setIsChatOpen(false);
+      } else if (key === '3') {
+        event.preventDefault();
+        setIsTrashOpen((open) => !open);
+      } else if (key === 'enter' && selectedDocId !== null) {
+        event.preventDefault();
+        askAboutReviewer(selectedDocId);
+      }
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [isCommandPaletteOpen, selectedDocId]);
+
   return (
     <div data-theme={theme} className="conext-app flex h-screen w-screen overflow-hidden bg-[#0b0f17] text-slate-100 font-sans">
       {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
-        onShowDashboard={() => {
-          setActiveView('dashboard');
-          setIsChatOpen(false);
-        }}
-        onShowLibrary={() => {
-          setActiveView('library');
-          setIsChatOpen(false);
-        }}
+        onShowDashboard={() => { setActiveView('dashboard'); setIsChatOpen(false); setIsTrashOpen(false); }}
+        onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); setIsTrashOpen(false); }}
+        trashedDocuments={trashedDocuments}
+        isTrashOpen={isTrashOpen}
+        onToggleTrash={() => setIsTrashOpen((open) => !open)}
+        onRestoreReviewer={onRestoreReviewer}
+        trashShortcutLabel={`${modifierLabel}+3`}
         onUploadSuccess={handleUpload}
         isUploading={isUploading}
-        health={health}
-        recentDocuments={recentDocumentIds
-          .map((id) => documents.find((document) => document.id === id))
-          .filter((document): document is DocumentItem => Boolean(document))}
-        onOpenRecent={openReviewer}
-        onRemoveRecent={(documentId) => setRecentDocumentIds((current) => current.filter((id) => id !== documentId))}
       />
 
       {/* Center Main Workspace */}
@@ -289,8 +362,7 @@ export const Workspace: React.FC = () => {
           <div className="flex items-center gap-3 min-w-0">
             {activeView === 'dashboard' ? (
               <div>
-                <h1 className="text-sm font-bold text-white">Dashboard</h1>
-                <p className="text-[11px] text-slate-400">Your reviewer workspace at a glance</p>
+                <h1 className="text-sm font-semibold text-white">Recent</h1>
               </div>
             ) : activeView === 'library' ? (
               <div>
@@ -415,20 +487,20 @@ export const Workspace: React.FC = () => {
 
           {activeView === 'dashboard' ? (
             <Dashboard
-              documents={documents}
-              health={health}
+              documents={activeDocuments}
+              onTrashReviewer={onTrashReviewer}
               onOpenReviewer={openReviewer}
-              onAskReviewer={askAboutReviewer}
-              isRightPanelOpen={isDashboardPanelOpen}
-              onToggleRightPanel={() => setIsDashboardPanelOpen((open) => !open)}
+              onUploadSuccess={handleUpload}
+              isUploading={isUploading}
             />
           ) : activeView === 'library' ? (
             <Projects
-              documents={documents}
+              documents={activeDocuments}
               projects={projects}
               onOpenReviewer={openReviewer}
               onCreateFolder={handleCreateProject}
               onMoveReviewer={handleMoveReviewer}
+              onTrashReviewer={onTrashReviewer}
             />
           ) : isChatOpen && currentDoc ? (
             <>
@@ -557,6 +629,20 @@ export const Workspace: React.FC = () => {
           )}
         </div>
       </main>
+      <CommandPalette
+        open={isCommandPaletteOpen}
+        mode={paletteMode}
+        documents={activeDocuments}
+        selectedDocumentId={selectedDocId}
+        selectedFilename={documents.find((document) => document.id === selectedDocId)?.filename}
+        modifierLabel={modifierLabel}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onOpenReviewer={openReviewer}
+        onGoRecent={() => { setActiveView('dashboard'); setIsChatOpen(false); }}
+        onGoLibrary={() => { setActiveView('library'); setIsChatOpen(false); }}
+        onOpenTrash={() => setIsTrashOpen(true)}
+        onAskSelected={() => selectedDocId !== null && askAboutReviewer(selectedDocId)}
+      />
     </div>
   );
 };

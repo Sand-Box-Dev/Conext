@@ -143,6 +143,87 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .conext-app[data-theme="dark"] .concept-node { background-color: #242730 !important; border-color: #414958 !important; box-shadow: 0 3px 12px rgba(0, 0, 0, .2); }
 .conext-app[data-theme="dark"] .concept-node:hover { border-color: #8596f0 !important; box-shadow: 0 5px 16px rgba(0, 0, 0, .28); }
 .conext-app[data-theme="dark"] .concept-node-selected { border-color: #a4b0ff !important; box-shadow: 0 0 0 2px rgba(142, 158, 255, .24), 0 0 15px rgba(115, 134, 243, .24) !important; }
+.reviewer-cover-frame { box-shadow: 0 5px 16px rgba(29, 39, 63, .14); }
+#root .reviewer-cover-edit { color: #303641 !important; background: rgba(255,255,255,.88) !important; border: 1px solid rgba(35,43,60,.12); box-shadow: 0 3px 10px rgba(24,31,50,.14); }
+#root .reviewer-cover-edit:hover { background: #fff !important; }
+#root .reviewer-trash-action { color: #303641 !important; background: rgba(255,255,255,.88) !important; border: 1px solid rgba(35,43,60,.12); }
+#root .reviewer-trash-action:hover { color: #b42318 !important; background: #fff !important; }
+#root .trash-count { color: #303847 !important; background: #e6e9f0 !important; }
+#root .reviewer-open-indicator { color: #fff !important; }
+#root .conext-app[data-theme="dark"] .reviewer-cover-frame { box-shadow: 0 6px 18px rgba(0,0,0,.32); }
+#root .conext-app[data-theme="dark"] .reviewer-cover-edit { color: #f5f6f9 !important; background: rgba(28,31,39,.88) !important; border-color: rgba(255,255,255,.16); }
+#root .conext-app[data-theme="dark"] .reviewer-cover-edit:hover { background: rgba(37,41,51,.96) !important; }
+#root .conext-app[data-theme="dark"] .reviewer-trash-action { color: #f5f6f9 !important; background: rgba(28,31,39,.88) !important; border-color: rgba(255,255,255,.16); }
+#root .conext-app[data-theme="dark"] .reviewer-trash-action:hover { color: #ffb4ab !important; background: rgba(37,41,51,.96) !important; }
+#root .conext-app[data-theme="dark"] .trash-count { color: #eef0f5 !important; background: #3a3f4b !important; }
+.recent-upload > div > [role="button"] { min-height: 5.25rem; flex-direction: row; gap: .85rem; padding: 1rem 1.25rem; text-align: left; }
+.recent-upload > div > [role="button"] > div { flex: 0 0 auto; margin: 0; }
+.recent-upload > div > [role="button"] > p { margin: 0; }
+.recent-upload > div > [role="button"] > p + p { margin-left: auto; text-align: right; }
+#root .recent-upload .upload-drop-icon { color: #252b36 !important; background: #e3e6ed !important; border-color: #d6dae4 !important; }
+.conext-app[data-theme="dark"] .recent-upload > div > [role="button"] { background: rgba(35,38,46,.55) !important; }
+#root .reviewer-search-box { background: #f0f1f5 !important; border-color: #e4e6ed !important; }
+#root .recent-upload > div > [role="button"] { background: #f0f1f5 !important; border-color: #dfe2ea !important; }
+#root .recent-upload > div > [role="button"]:hover,
+#root .recent-upload > div > [role="button"]:focus-visible { background: #eceef3 !important; border-color: #cbd1e1 !important; }
+#root .conext-app[data-theme="dark"] .reviewer-search-box { background: #1c1f27 !important; border-color: #343944 !important; }
+#root .conext-app[data-theme="dark"] .recent-upload > div > [role="button"] { background: #1c1f27 !important; border-color: #343944 !important; }
+#root .conext-app[data-theme="dark"] .recent-upload > div > [role="button"]:hover,
+#root .conext-app[data-theme="dark"] .recent-upload > div > [role="button"]:focus-visible { background: #222630 !important; border-color: #4b5363 !important; }
+#root .conext-app[data-theme="dark"] .recent-upload .upload-drop-icon { color: #eef0f5 !important; background: #303541 !important; border-color: #464d5c !important; }
+.library-folder { display: flex; min-width: 0; align-items: center; gap: .7rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--surface); padding: .8rem .9rem; text-align: left; color: var(--muted); transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.library-folder:hover { transform: translateY(-1px); border-color: #c7cde0; box-shadow: 0 5px 15px rgba(28,38,65,.07); }
+.library-folder.is-active { border-color: #8998dc; background: var(--accent-soft); color: var(--accent); }
+.library-folder.is-drop-target { border-color: #7184df; box-shadow: 0 0 0 3px rgba(105,126,218,.16); }
+.conext-app[data-theme="dark"] .library-folder:hover { border-color: #586174; box-shadow: 0 5px 16px rgba(0,0,0,.2); }
+.conext-app[data-theme="dark"] .library-folder.is-active { border-color: #7283d5; }
+.create-folder-dialog { background: #fff !important; }
+.conext-app[data-theme="dark"] .create-folder-dialog { background: #20232b !important; border-color: #414652 !important; }
+.conext-app[data-theme="dark"] .create-folder-dialog h2 { color: #eef0f5 !important; }
+.conext-app[data-theme="dark"] .create-folder-dialog input { background: #17191f !important; color: #eef0f5 !important; border-color: #414652 !important; }
+.apple-dialog { color: #202632; background: rgba(255,255,255,.88); border-color: rgba(255,255,255,.72); backdrop-filter: blur(28px) saturate(160%); box-shadow: 0 24px 80px rgba(18,26,45,.24), 0 2px 8px rgba(18,26,45,.08); animation: apple-dialog-arrive .22s cubic-bezier(.2,.8,.2,1) both; }
+#root .apple-dialog p { color: #394252 !important; }
+.apple-dialog-actions { border-top: 1px solid rgba(46,55,75,.1); }
+.apple-dialog-cancel, .apple-dialog-confirm { min-height: 2.65rem; border: 0; border-radius: .65rem; padding: .55rem 1rem; font-size: .9rem; transition: opacity .14s ease, transform .12s ease; }
+.apple-dialog-cancel { color: #6e7787; background: transparent; font-weight: 450; }
+.apple-dialog-cancel:hover { background: transparent; color: #303847; }
+.apple-dialog-confirm { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; color: #5268c8; background: transparent; font-weight: 600; }
+.apple-dialog-confirm:hover { background: transparent; color: #4059ba; }
+.trash-dialog-confirm { color: #c62828 !important; }
+.trash-dialog-confirm:hover { color: #a61f1f !important; }
+.apple-dialog-cancel:active, .apple-dialog-confirm:active { transform: scale(.98); opacity: .72; }
+.apple-toast { color: #283040; background: rgba(255,255,255,.86); border-color: rgba(255,255,255,.78); backdrop-filter: blur(24px) saturate(160%); box-shadow: 0 12px 36px rgba(21,30,52,.18); animation: apple-dialog-arrive .2s cubic-bezier(.2,.8,.2,1) both; }
+.apple-toast button { color: #687184; }
+.apple-toast button:hover { color: #293142; }
+.conext-app[data-theme="dark"] .apple-dialog { color: #eef0f5; background: rgba(38,41,50,.9); border-color: rgba(255,255,255,.12); box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+.conext-app[data-theme="dark"] .apple-dialog h2 { color: #eef0f5 !important; }
+#root .conext-app[data-theme="dark"] .apple-dialog p { color: #c5cbd6 !important; }
+.conext-app[data-theme="dark"] .apple-dialog-actions { border-color: rgba(255,255,255,.12); }
+.conext-app[data-theme="dark"] .apple-dialog-cancel { color: #aeb6c5; background: transparent; }
+.conext-app[data-theme="dark"] .apple-dialog-cancel:hover { background: transparent; color: #eef0f5; }
+.conext-app[data-theme="dark"] .apple-dialog-confirm { color: #a7b5ff !important; background: transparent !important; }
+.conext-app[data-theme="dark"] .apple-dialog-confirm:hover { background: transparent !important; color: #c1cbff !important; }
+.conext-app[data-theme="dark"] .trash-dialog-confirm { color: #ff8a80 !important; }
+.conext-app[data-theme="dark"] .trash-dialog-confirm:hover { color: #ffb4ab !important; }
+.conext-app[data-theme="dark"] .apple-toast { color: #eef0f5; background: rgba(39,42,51,.9); border-color: rgba(255,255,255,.12); }
+.conext-app[data-theme="dark"] .apple-toast button { color: #b6bdca; }
+.conext-app[data-theme="dark"] .apple-toast button:hover { color: #fff; }
+@keyframes apple-dialog-arrive { from { opacity: 0; transform: translateY(5px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.command-palette-scrim { background: rgba(16,20,32,.25); backdrop-filter: blur(8px); animation: command-scrim-in .16s ease-out both; }
+.command-palette { background: rgba(255,255,255,.94); border-color: rgba(255,255,255,.82); backdrop-filter: blur(30px) saturate(170%); box-shadow: 0 28px 90px rgba(15,22,42,.25), 0 2px 12px rgba(15,22,42,.08); animation: apple-dialog-arrive .2s cubic-bezier(.2,.8,.2,1) both; }
+#root .command-palette input:focus-visible { outline: none !important; box-shadow: none !important; }
+.command-palette-item.is-active { background: #f0f2f8; }
+.command-palette-item > span:first-child { transition: color .15s ease, background-color .15s ease; }
+.command-palette kbd { border-radius: .35rem; border: 1px solid #e0e3ea; background: rgba(255,255,255,.7); padding: .12rem .35rem; font: 500 10px/1.4 ui-monospace, SFMono-Regular, monospace; }
+.conext-app[data-theme="dark"] .command-palette { background: rgba(35,38,46,.96); border-color: rgba(255,255,255,.12); box-shadow: 0 28px 90px rgba(0,0,0,.5); }
+.conext-app[data-theme="dark"] .command-palette input { color: #eef0f5 !important; }
+.conext-app[data-theme="dark"] .command-palette-item.is-active { background: #2b303a; }
+.conext-app[data-theme="dark"] .command-palette-item > span:first-child { color: #c4cad5; background: #303541; }
+.conext-app[data-theme="dark"] .command-palette-item .text-slate-800 { color: #eef0f5 !important; }
+.conext-app[data-theme="dark"] .command-palette kbd { color: #bdc4d1; border-color: #454b57; background: rgba(255,255,255,.05); }
+.conext-app[data-theme="dark"] .command-palette-footer { border-color: rgba(255,255,255,.1); color: #9da6b6; }
+.conext-app[data-theme="dark"] .command-palette > div:first-child { border-color: rgba(255,255,255,.1); }
+@keyframes command-scrim-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* The concept canvas remains its own instrument-like workspace. */
 .react-flow { background: #f7f8fb; }
@@ -171,6 +252,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 @media (prefers-reduced-transparency: reduce) {
   #root header, #root aside { backdrop-filter: none !important; background-color: #fff !important; }
+  .apple-dialog, .apple-toast { backdrop-filter: none !important; background: #fff !important; }
+  .conext-app[data-theme="dark"] .apple-dialog, .conext-app[data-theme="dark"] .apple-toast { background: #20232b !important; }
 }
 @media (prefers-contrast: more) {
   :root { --line: #aab1bf; --muted: #4a5363; }
