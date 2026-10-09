@@ -3,9 +3,6 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  ShieldCheck,
-  Cpu,
-  Database,
   AlertCircle,
   Eye,
   EyeOff,
@@ -18,10 +15,9 @@ import type { UserProfile } from '../types';
 
 interface AuthModalProps {
   onSuccess: (user: UserProfile) => void;
-  onContinueAsGuest?: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGuest }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -89,25 +85,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
   };
 
   return (
-    <div className="min-h-screen w-screen flex items-center justify-center bg-[#0b0f17] relative overflow-hidden select-none p-4">
-      {/* Dynamic Ambient Background Glows */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-slate-500/20 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-slate-500/20 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-slate-500/10 rounded-full blur-[160px] pointer-events-none" />
-
-      {/* Main Container Card */}
-      <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-2xl border border-slate-800/80 rounded-2xl shadow-2xl p-8 z-10 transition-all">
+    <div className="auth-screen flex min-h-screen w-screen items-center justify-center p-4">
+      <div className="auth-card card w-full max-w-md border border-slate-200 bg-white shadow-xl">
+        <div className="card-body gap-0 p-7 sm:p-9">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center mb-8">
-          <img src={conextLogo} alt="" className="mb-4 h-20 w-20 rounded-2xl object-contain" />
-
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Notepad AI
-          </h1>
+        <div className="mb-7 flex flex-col items-center text-center">
+          <img src={conextLogo} alt="" className="h-12 w-12 rounded-xl object-contain" />
+          <h1 className="mt-3 text-lg font-semibold tracking-tight text-slate-950">Notepad AI</h1>
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="mb-6 flex justify-center gap-2" role="tablist" aria-label="Account access">
+        <div className="auth-mode-list mb-6 flex gap-1 rounded-xl p-1" role="tablist" aria-label="Account access">
           <button
             type="button"
             role="tab"
@@ -116,7 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
               setMode('login');
               setError(null);
             }}
-            className={`auth-mode-toggle rounded-lg px-4 py-2 text-sm transition-colors ${
+            className={`auth-mode-toggle flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               mode === 'login'
                 ? 'bg-slate-900 text-white shadow-sm shadow-black/10'
                 : 'text-slate-400 hover:text-slate-200'
@@ -132,7 +120,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
               setMode('signup');
               setError(null);
             }}
-            className={`auth-mode-toggle rounded-lg px-4 py-2 text-sm transition-colors ${
+            className={`auth-mode-toggle flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               mode === 'signup'
                 ? 'bg-slate-900 text-white shadow-sm shadow-black/10'
                 : 'text-slate-400 hover:text-slate-200'
@@ -161,11 +149,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Name
               </label>
               <div className="relative">
-                <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <UserRound className="auth-field-icon pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <input
                   type="text"
                   autoComplete="name"
@@ -174,48 +162,51 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   placeholder="Your name"
-                  className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all"
+                  className="auth-input input input-bordered w-full rounded-xl pl-10 pr-4 text-sm"
                 />
               </div>
             </div>
           )}
           {/* Email Field */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Email Address
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Email address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Mail className="auth-field-icon pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
               <input
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="developer@conext.ai"
-                className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all"
+                placeholder="you@example.com"
+                className="auth-input input input-bordered w-full rounded-xl pl-10 pr-4 text-sm"
               />
             </div>
           </div>
 
           {/* Password Field */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Password
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Lock className="auth-field-icon pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none transition-all"
+                placeholder="Enter your password"
+                className="auth-input input input-bordered w-full rounded-xl pl-10 pr-11 text-sm"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-slate-500 hover:text-slate-300 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="auth-password-toggle absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 transition-colors"
               >
                 {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </button>
@@ -225,18 +216,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
           {/* Confirm Password (Signup only) */}
           {mode === 'signup' && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Confirm Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock className="auth-field-icon pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all"
+                  autoComplete="new-password"
+                  placeholder="Confirm your password"
+                  className="auth-input input input-bordered w-full rounded-xl pl-10 pr-4 text-sm"
                 />
               </div>
             </div>
@@ -246,15 +238,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
           <button
             type="submit"
             disabled={isLoading}
-            className="auth-submit w-full mt-2 flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-medium shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="auth-submit btn btn-neutral mt-3 w-full rounded-xl text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Processing...
+                <span className="loading loading-spinner loading-sm" />
+                Processing…
               </span>
             ) : (
               <>
@@ -265,33 +254,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
           </button>
         </form>
 
-        {/* Continue as Guest option */}
-        {onContinueAsGuest && (
-          <div className="mt-4 pt-4 text-center">
-            <button
-              type="button"
-              onClick={onContinueAsGuest}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1.5"
-            >
-              <span>Explore as Guest</span>
-            </button>
-          </div>
-        )}
-
-        {/* Footer Feature Badges */}
-        <div className="mt-8 pt-6 grid grid-cols-3 gap-2 text-center text-xs text-slate-500">
-          <div className="flex flex-col items-center gap-1">
-            <ShieldCheck className="w-4 h-4 text-slate-500" />
-            <span>Supabase Auth</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <Cpu className="w-4 h-4 text-slate-500" />
-            <span>Local AI</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <Database className="h-6 w-6" />
-            <span>Postgres DB</span>
-          </div>
         </div>
       </div>
     </div>

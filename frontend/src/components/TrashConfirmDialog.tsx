@@ -9,11 +9,13 @@ interface TrashConfirmDialogProps {
   action?: 'trash' | 'delete';
   isLoading?: boolean;
   error?: string | null;
+  deleteMessage?: string;
+  deleteLabel?: string;
 }
 
-export const TrashConfirmDialog: React.FC<TrashConfirmDialogProps> = ({ filename, onCancel, onConfirm, action = 'trash', isLoading = false, error = null }) => {
+export const TrashConfirmDialog: React.FC<TrashConfirmDialogProps> = ({ filename, onCancel, onConfirm, action = 'trash', isLoading = false, error = null, deleteMessage, deleteLabel }) => {
   const deleting = action === 'delete';
-  const actionLabel = deleting ? 'Delete permanently' : 'Move to Trash';
+  const actionLabel = deleting ? (deleteLabel ?? 'Delete permanently') : 'Move to Trash';
   const dialog = (
   <div className="modal modal-open z-[90] bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !isLoading) onCancel(); }}>
     <section role="alertdialog" aria-modal="true" aria-labelledby="trash-reviewer-title" className="modal-box minimal-trash-dialog w-full max-w-[22rem] rounded-2xl border p-5 shadow-xl">
@@ -21,7 +23,7 @@ export const TrashConfirmDialog: React.FC<TrashConfirmDialogProps> = ({ filename
       <p className="mt-2 break-words text-sm leading-relaxed">
         <span className="font-medium">{filename}</span>{' '}
         {deleting
-          ? 'and its saved reviewer data will be deleted permanently. This can’t be undone.'
+          ? (deleteMessage ?? 'and its saved reviewer data will be deleted permanently. This can’t be undone.')
           : 'will move to Trash. You can restore it later.'}
       </p>
       {error && <p role="alert" className="mt-3 rounded-lg border px-3 py-2 text-xs">{error}</p>}

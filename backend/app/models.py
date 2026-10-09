@@ -58,6 +58,19 @@ class ChatMessage(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
 
+class StudyExam(Base):
+    __tablename__ = "study_exams"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    mode = Column(String(20), nullable=False, index=True)  # quiz, flashcards, essay
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)  # JSON serialized generated exam and optional attempt
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    document = relationship("Document")
+
+
 class ConceptMap(Base):
     __tablename__ = "concept_maps"
 

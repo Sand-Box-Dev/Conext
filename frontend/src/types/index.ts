@@ -93,6 +93,76 @@ export interface ReviewerAnswer {
   citations: ReviewerCitation[];
 }
 
+export interface StudyCitation {
+  passage_id: number;
+  page_number: number;
+}
+
+export interface QuizItem {
+  question: string;
+  options: string[];
+  answer_index: number;
+  explanation: string;
+  citations: StudyCitation[];
+}
+
+export interface FlashcardItem {
+  front: string;
+  back: string;
+  citations: StudyCitation[];
+}
+
+export interface EssayRubricCriterion {
+  criterion: string;
+  points: number;
+  description: string;
+}
+
+export interface EssayTask {
+  title: string;
+  prompt: string;
+  citations: StudyCitation[];
+  rubric: EssayRubricCriterion[];
+  submission?: string;
+  grade?: EssayGrade;
+}
+
+export interface EssayCriterionGrade extends EssayRubricCriterion {
+  score: number;
+  feedback: string;
+}
+
+export interface EssayGrade {
+  score: number;
+  max_score: number;
+  criteria: EssayCriterionGrade[];
+  overall_feedback: string;
+  strengths: string[];
+  next_steps: string[];
+  recommendations?: string[];
+  citations: StudyCitation[];
+}
+
+export type StudyMode = 'quiz' | 'flashcards' | 'essay';
+
+export interface StudyExam {
+  id: number;
+  mode: StudyMode;
+  title: string;
+  document_id: number;
+  document_filename: string;
+  created_at: string;
+  content: {
+    items?: QuizItem[] | FlashcardItem[];
+    title?: string;
+    prompt?: string;
+    citations?: StudyCitation[];
+    rubric?: EssayRubricCriterion[];
+    submission?: string;
+    grade?: EssayGrade;
+  };
+}
+
 export interface SavedReviewerMessage {
   id: number;
   role: 'user' | 'assistant';

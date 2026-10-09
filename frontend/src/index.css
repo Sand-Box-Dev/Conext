@@ -2,7 +2,7 @@
 @plugin "daisyui";
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Segoe UI", system-ui, sans-serif;
   color: #202632;
   background: #f4f5f8;
   font-synthesis: none;
@@ -278,6 +278,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .conext-app[data-theme="dark"] .minimal-trash-cancel { color: #d4d4d4; }
 .conext-app[data-theme="dark"] .minimal-trash-cancel:hover:not(:disabled) { background: #262626; }
 .conext-app[data-theme="dark"] .minimal-trash-confirm { color: #fff; background: #c62828; }
+
 .conext-app[data-theme="dark"] .minimal-trash-confirm:hover:not(:disabled) { background: #a61f1f; }
 .folder-delete-copy { color: #737373; }
 .folder-delete-confirm { min-height: 2.35rem; border: 0; border-radius: .55rem; padding: .5rem .8rem; color: #fff; background: #c62828; font-size: .83rem; font-weight: 500; cursor: pointer; transition: background-color .14s ease, opacity .14s ease; }
@@ -346,3 +347,38 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   :root { --line: #aab1bf; --muted: #4a5363; }
   #root button, #root input, #root select { border-color: #858d9b; }
 }
+
+/* Keep typography and corner shapes consistent throughout the app. */
+#root .conext-app { font-family: "Segoe UI", system-ui, sans-serif !important; }
+#root .conext-app :not(.katex, .katex *) { font-family: "Segoe UI", system-ui, sans-serif !important; }
+#root [class~="rounded-sm"] { border-radius: .5rem !important; }
+#root [class~="rounded"],
+#root [class~="rounded-md"] { border-radius: .7rem !important; }
+#root [class~="rounded-lg"] { border-radius: .9rem !important; }
+#root [class~="rounded-xl"] { border-radius: 1rem !important; }
+#root [class~="rounded-2xl"] { border-radius: 1.25rem !important; }
+#root [class~="rounded-3xl"] { border-radius: 1.5rem !important; }
+#root .btn:not(.btn-circle):not([class~="rounded-full"]),
+#root button:not([class~="rounded-full"]) { border-radius: .8rem !important; }
+#root .input, #root .select, #root .textarea, #root textarea,
+#root .file-input { border-radius: .8rem !important; }
+#root .card, #root .alert, #root .modal-box, #root [role="dialog"],
+#root [role="alertdialog"], #root .dropdown-content { border-radius: 1.25rem !important; }
+
+/* Simple, readable sign-in and account creation screen. */
+#root .auth-screen { height: 100dvh; min-height: 100dvh; overflow-y: auto; background: #f4f5f8 !important; }
+#root .auth-card.card { max-height: calc(100dvh - 2rem); overflow: auto; border-color: #e5e7eb !important; border-radius: 1.5rem !important; background: #fff !important; box-shadow: 0 24px 70px -48px rgba(15,23,42,.32) !important; }
+#root .auth-mode-list { border: 1px solid #e6e8ed; background: #f3f4f6; }
+#root .auth-mode-toggle { border: 0; color: #697386 !important; background: transparent !important; box-shadow: none !important; }
+#root .auth-mode-toggle:hover { color: #252a33 !important; background: #e9ebef !important; }
+#root .auth-mode-toggle[aria-selected="true"],
+#root .auth-mode-toggle[aria-selected="true"]:hover { color: #fff !important; background: #171717 !important; box-shadow: 0 1px 2px rgba(0,0,0,.12) !important; }
+#root .auth-input, #root .auth-input:hover { color: #202632 !important; border: 1px solid #e1e4ea !important; background: #f8f9fb !important; outline: none !important; box-shadow: none !important; caret-color: #202632 !important; }
+#root .auth-input:focus, #root .auth-input:focus-visible { border-color: #737373 !important; background: #fff !important; outline: 3px solid rgba(64,64,64,.1) !important; outline-offset: 1px; }
+#root .auth-input::placeholder { color: #929aaa !important; }
+#root .auth-field-icon { z-index: 1; color: #747b87 !important; stroke-width: 1.8; }
+#root .auth-input:-webkit-autofill, #root .auth-input:-webkit-autofill:hover, #root .auth-input:-webkit-autofill:focus { -webkit-text-fill-color: #202632 !important; -webkit-box-shadow: 0 0 0 1000px #f8f9fb inset !important; box-shadow: 0 0 0 1000px #f8f9fb inset !important; }
+#root .auth-password-toggle { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+#root .auth-password-toggle:hover { color: #252a33 !important; background: #e9ebef !important; }
+#root .auth-submit { min-height: 2.9rem; border-color: #171717 !important; border-radius: .8rem !important; background: #171717 !important; box-shadow: none !important; }
+#root .auth-submit:hover:not(:disabled) { border-color: #373737 !important; background: #373737 !important; }

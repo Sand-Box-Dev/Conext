@@ -4,11 +4,12 @@ import logging
 from typing import Dict, Any, Optional
 import httpx
 from ..schemas import ExtractionResult
+from ..config import OLLAMA_BASE_URL as CONFIGURED_OLLAMA_BASE_URL, OLLAMA_MODEL
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_BASE_URL = "http://127.0.0.1:11434"
-DEFAULT_MODEL = "gemma4:31b-cloud"
+OLLAMA_BASE_URL = CONFIGURED_OLLAMA_BASE_URL.rstrip("/")
+DEFAULT_MODEL = OLLAMA_MODEL
 
 async def check_ollama_health(model_name: str = DEFAULT_MODEL) -> Dict[str, Any]:
     """

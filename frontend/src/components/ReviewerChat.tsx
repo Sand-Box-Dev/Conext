@@ -5,7 +5,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { ArrowUp, LoaderCircle } from 'lucide-react';
 import { api } from '../services/api';
-import type { ReviewerCitation } from '../types';
+import type { ReviewerCitation, StudyMode } from '../types';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -18,6 +18,7 @@ interface ReviewerChatProps {
   filename: string;
   isProcessing?: boolean;
   hasProcessingError?: boolean;
+  onOpenStudyMode: (mode: StudyMode, documentId: number) => void;
 }
 
 const answerMarkdownComponents: Components = {
@@ -32,7 +33,7 @@ const answerMarkdownComponents: Components = {
   blockquote: ({ children }) => <blockquote className="my-3 border-l-2 border-slate-600 pl-3 text-slate-300">{children}</blockquote>,
 };
 
-export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename, isProcessing = false, hasProcessingError = false }) => {
+export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename, isProcessing = false, hasProcessingError = false, onOpenStudyMode }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -82,8 +83,6 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
     }
   };
 
-  const suggestions = ['Summarize the main ideas', 'Explain a difficult concept', 'What should I remember?'];
-
   return (
     <section className="conext-chat flex min-h-0 flex-1 flex-col bg-[#0b0f17]">
       <div className="chat-transcript mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
@@ -131,11 +130,9 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
             </div>
             {error && <div role="alert" className="alert alert-error mt-3 py-2 text-xs">{error}</div>}
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              {suggestions.map((suggestion) => (
-                <button key={suggestion} className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => setQuestion(suggestion)}>
-                  {suggestion}
-                </button>
-              ))}
+              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => onOpenStudyMode('quiz', documentId)}>Generate Quiz</button>
+              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => onOpenStudyMode('flashcards', documentId)}>Generate Flash-Card</button>
+              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => onOpenStudyMode('essay', documentId)}>Generate Essay</button>
             </div>
           </div>
         ) : (

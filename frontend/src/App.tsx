@@ -6,7 +6,6 @@ import type { UserProfile } from './types';
 
 function App() {
   const [user, setUser] = useState<UserProfile | null>(() => authStorage.getUser());
-  const [isGuest, setIsGuest] = useState<boolean>(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
 
   useEffect(() => {
@@ -32,22 +31,16 @@ function App() {
 
   const handleAuthSuccess = (authenticatedUser: UserProfile) => {
     setUser(authenticatedUser);
-    setIsGuest(false);
   };
 
   const handleLogout = () => {
     api.logout();
     setUser(null);
-    setIsGuest(false);
   };
 
   const handleUserUpdated = (updatedUser: UserProfile) => {
     setUser(updatedUser);
     authStorage.setUser(updatedUser);
-  };
-
-  const handleContinueAsGuest = () => {
-    setIsGuest(true);
   };
 
   if (isCheckingAuth) {
@@ -63,12 +56,10 @@ function App() {
     );
   }
 
-  // Show AuthModal if user is neither authenticated nor in guest mode
-  if (!user && !isGuest) {
+  if (!user) {
     return (
       <AuthModal
         onSuccess={handleAuthSuccess}
-        onContinueAsGuest={handleContinueAsGuest}
       />
     );
   }

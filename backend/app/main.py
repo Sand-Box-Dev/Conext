@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from .database import engine, Base
-from .routers import health, documents, concepts, chat, projects, auth, memories
+from .routers import health, documents, concepts, chat, projects, auth, memories, study
 
 # Ensure database tables exist in Supabase Postgres or SQLite
 Base.metadata.create_all(bind=engine)
@@ -53,6 +53,8 @@ app.include_router(concepts.router)
 app.include_router(chat.router)
 app.include_router(projects.router)
 app.include_router(memories.router)
+app.include_router(study.router)
+app.include_router(study.library_router)
 
 @app.get("/")
 def root():

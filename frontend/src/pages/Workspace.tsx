@@ -19,6 +19,7 @@ import { Projects } from './Projects';
 import { Settings } from './Settings';
 import { Trash as TrashPage } from './Trash';
 import { OriginalFilePreview } from '../components/OriginalFilePreview';
+import { StudyMode } from '../components/StudyMode';
 import { api } from '../services/api';
 import { removeReviewerCover } from '../services/coverStorage';
 import type {
@@ -68,7 +69,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<'commands' | 'reviewers'>('commands');
   const [modifierLabel] = useState(() => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘' : 'Ctrl');
-  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'workspace' | 'trash' | 'settings'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'workspace' | 'trash' | 'settings' | 'quiz' | 'flashcards' | 'essay'>('dashboard');
+  const [studyGenerationRequest, setStudyGenerationRequest] = useState<{ mode: 'quiz' | 'flashcards' | 'essay'; documentId: number } | null>(null);
 
   // Concept Map state
   const [conceptMap, setConceptMap] = useState<ConceptMapData | null>(null);
@@ -432,6 +434,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
     setIsChatOpen(true);
   };
 
+  const openStudyMode = (mode: 'quiz' | 'flashcards' | 'essay', documentId?: number) => {
+    setStudyGenerationRequest(documentId ? { mode, documentId } : null);
+    setActiveView(mode);
+    setIsChatOpen(false);
+    setIsOriginalPreviewOpen(false);
+  };
+
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -501,6 +510,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         onShowTrash={() => { setActiveView('trash'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
         onShowSettings={() => { setActiveView('settings'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
         onOpenSearch={() => { setPaletteMode('commands'); setIsCommandPaletteOpen(true); }}
+        onShowQuiz={() => openStudyMode('quiz')}
+        onShowFlashcards={() => openStudyMode('flashcards')}
+        onShowEssay={() => openStudyMode('essay')}
         trashedDocuments={trashedDocuments}
         trashShortcutLabel={`${modifierLabel}+3`}
         modifierLabel={modifierLabel}
@@ -526,6 +538,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
               <div><h1 className="text-sm font-bold text-white">Trash</h1><p className="text-[11px] text-slate-400">Restore or remove reviewers</p></div>
             ) : activeView === 'settings' ? (
               <div><h1 className="text-sm font-bold text-white">Settings</h1><p className="text-[11px] text-slate-400">Account and keyboard shortcuts</p></div>
+            ) : activeView === 'quiz' || activeView === 'flashcards' || activeView === 'essay' ? (
+              <div><h1 className="text-sm font-bold text-white">{activeView === 'quiz' ? 'Quiz' : activeView === 'flashcards' ? 'Flash-Card' : 'Essay'}</h1><p className="text-[11px] text-slate-400">Study from your reviewer</p></div>
             ) : currentDoc ? (
               <div>
                 <h1 className="text-sm font-bold text-white truncate max-w-md">
@@ -660,6 +674,21 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
             />
           ) : activeView === 'settings' ? (
             <Settings user={user} modifierLabel={modifierLabel} onUserUpdated={onUserUpdated} />
+          ) : activeView === 'quiz' || activeView === 'flashcards' || activeView === 'essay' ? (
+            <StudyMode
+              key={activeView}
+              mode={activeView}
+              generateForDocumentId={studyGenerationRequest?.mode === activeView ? studyGenerationRequest.documentId : null}
+              onGenerationRequestHandled={() => setStudyGenerationRequest(null)}
+              documents={activeDocuments}
+              onReviewerSelected={(documentId) => {
+                setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
+                setSelectedDocId(documentId);
+                setIsOriginalPreviewOpen(false);
+              }}
+              onGoToRecent={() => setActiveView('dashboard')}
+              onBackToChat={() => { setActiveView('workspace'); setIsChatOpen(true); }}
+            />
           ) : isChatOpen && currentDoc ? (
             <ReviewerChat
               key={currentDoc.id}
@@ -667,6 +696,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
               filename={currentDoc.filename}
               isProcessing={currentDoc.processing_status === 'processing'}
               hasProcessingError={currentDoc.processing_status === 'error'}
+              onOpenStudyMode={openStudyMode}
             />
           ) : !currentDoc ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">

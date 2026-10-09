@@ -4,6 +4,9 @@ import type {
   ConceptMapData,
   ConceptDetail,
   ReviewerAnswer,
+  EssayGrade,
+  StudyExam,
+  StudyMode,
   SavedReviewerMessage,
   ProjectFolder,
   AuthResponse,
@@ -326,6 +329,75 @@ export const api = {
       throw new Error(err.detail || 'Could not answer that question');
     }
     return res.json();
+  },
+
+  async generateQuiz(documentId: number): Promise<StudyExam> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/study/quiz`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not generate the quiz.' }));
+      throw new Error(err.detail || 'Could not generate the quiz.');
+    }
+    return res.json();
+  },
+
+  async generateFlashcards(documentId: number): Promise<StudyExam> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/study/flashcards`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not generate flashcards.' }));
+      throw new Error(err.detail || 'Could not generate flashcards.');
+    }
+    return res.json();
+  },
+
+  async generateEssayTask(documentId: number): Promise<StudyExam> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/study/essay`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not generate an essay prompt.' }));
+      throw new Error(err.detail || 'Could not generate an essay prompt.');
+    }
+    return res.json();
+  },
+
+  async gradeEssay(documentId: number, examId: number, prompt: string, essay: string): Promise<EssayGrade> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/study/essay/grade`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ exam_id: examId, prompt, essay }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not grade the essay.' }));
+      throw new Error(err.detail || 'Could not grade the essay.');
+    }
+    return res.json();
+  },
+
+  async getStudyExams(mode: StudyMode): Promise<StudyExam[]> {
+    const res = await fetch(`${API_BASE}/study/${mode}`, { headers: getAuthHeaders() });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not load saved study material.' }));
+      throw new Error(err.detail || 'Could not load saved study material.');
+    }
+    return res.json();
+  },
+
+  async deleteStudyExam(examId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/study/exams/${examId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not delete this saved study set.' }));
+      throw new Error(err.detail || 'Could not delete this saved study set.');
+    }
   },
 
   async getReviewerChat(documentId: number): Promise<SavedReviewerMessage[]> {

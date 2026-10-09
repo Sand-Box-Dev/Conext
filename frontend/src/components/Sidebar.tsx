@@ -4,12 +4,15 @@ import conextLogo from '../assets/logo/conext-logo-256.webp';
 import type { DocumentItem, UserProfile } from '../types';
 
 interface SidebarProps {
-  activeView: 'dashboard' | 'library' | 'workspace' | 'trash' | 'settings';
+  activeView: 'dashboard' | 'library' | 'workspace' | 'trash' | 'settings' | 'quiz' | 'flashcards' | 'essay';
   onShowDashboard: () => void;
   onShowLibrary: () => void;
   onShowTrash: () => void;
   onShowSettings: () => void;
   onOpenSearch: () => void;
+  onShowQuiz: () => void;
+  onShowFlashcards: () => void;
+  onShowEssay: () => void;
   trashedDocuments: DocumentItem[];
   trashShortcutLabel: string;
   modifierLabel: string;
@@ -24,6 +27,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onShowTrash,
   onShowSettings,
   onOpenSearch,
+  onShowQuiz,
+  onShowFlashcards,
+  onShowEssay,
   trashedDocuments,
   trashShortcutLabel,
   modifierLabel,
@@ -60,6 +66,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Trash2 className="h-4 w-4 shrink-0" /> {!isCollapsed && <><span className="flex-1 text-left">Trash</span><span className="trash-count rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{trashedDocuments.length}</span></>}
         </button>
         <button type="button" onClick={onShowSettings} title="Settings" className={navClass('settings')}><Settings2 className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Settings'}</button>
+      </nav>
+
+      <nav aria-label="Study tools" className={`space-y-1 border-b border-slate-800/80 py-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
+        <button type="button" onClick={onShowQuiz} title="Quiz" aria-current={activeView === 'quiz' ? 'page' : undefined} className={navClass('quiz')}>{isCollapsed ? 'Q' : 'Quiz'}</button>
+        <button type="button" onClick={onShowFlashcards} title="Flash-Card" aria-current={activeView === 'flashcards' ? 'page' : undefined} className={navClass('flashcards')}>{isCollapsed ? 'F' : 'Flash-Card'}</button>
+        <button type="button" onClick={onShowEssay} title="Essay" aria-current={activeView === 'essay' ? 'page' : undefined} className={navClass('essay')}>{isCollapsed ? 'E' : 'Essay'}</button>
       </nav>
 
       <div className="flex-1" />
