@@ -1,0 +1,15 @@
+# Introduction to Computer Operating Systems
+
+Operating systems are system software that manage computer hardware, software resources, and provide common services for computer programs.
+
+## Process Management
+A process is an instance of a computer program that is being executed by one or many threads. The operating system kernel manages processes through Process Control Blocks (PCBs). The CPU scheduler allocates processor execution time among active processes using scheduling algorithms such as Round Robin, Priority Scheduling, and Completely Fair Scheduling.
+
+## Memory Management and Virtual Memory
+Memory management keeps track of the status of each memory location, whether allocated or free. Virtual memory creates an idealized abstraction of the storage resources that are actually available on a given machine. Paging is a memory management scheme by which a computer stores and retrieves data from secondary storage for use in main memory. When a process requests a page not currently resident in physical RAM, a Page Fault occurs, prompting the operating system to retrieve the missing page from disk swap space.
+
+## File Systems and Persistent Storage
+A file system controls how data is stored and retrieved. Without a file system, information placed in a storage medium would be one large body of data with no way to tell where one piece of information stops and where the next begins. Common file systems include ext4, NTFS, and APFS. In Unix-like operating systems, an inode is a data structure used to represent a filesystem object such as a file or a directory.
+
+## Concurrency and Deadlocks
+Concurrency involves the simultaneous execution of multiple instruction sequences. When threads concurrently access shared resources without proper synchronization, race conditions arise. To prevent conflicts, operating systems provide synchronization primitives like mutexes and semaphores. A deadlock is a state in which each member of a group of actions is waiting for some other member to take action, such as sending a message or releasing a lock. Four conditions are necessary for deadlock: mutual exclusion, hold and wait, no preemption, and circular wait.
