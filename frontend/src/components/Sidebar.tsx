@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock3, FolderKanban, Trash2, ChevronLeft, ChevronRight, Settings2, LogOut, User } from 'lucide-react';
+import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User } from 'lucide-react';
 import type { DocumentItem, UserProfile } from '../types';
 
 interface SidebarProps {
@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-3' : 'justify-between gap-2.5'}`}>
           <h1 className={`font-bold tracking-tight text-white ${isCollapsed ? 'text-[10px]' : 'text-lg'}`}>Conext</h1>
           <button onClick={() => setIsCollapsed((collapsed) => !collapsed)} className="btn btn-ghost btn-sm btn-square shrink-0 text-slate-400 hover:text-white" title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
         </div>
       </div>
@@ -44,10 +44,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <nav aria-label="Main navigation" className={`space-y-1 border-b border-slate-800/80 py-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
         <button type="button" onClick={onShowDashboard} title="Recent" className={navClass('dashboard')}><Clock3 className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Recent'}</button>
         <button type="button" onClick={onShowLibrary} title="Library" className={navClass('library')}><FolderKanban className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Library'}</button>
-        <button type="button" onClick={() => { if (isCollapsed) setIsCollapsed(false); onShowTrash(); }} title={`Trash (${trashShortcutLabel})`} aria-current={activeView === 'trash' ? 'page' : undefined} className={navClass('trash')}>
+        <button type="button" onClick={onShowTrash} title={`Trash (${trashShortcutLabel})`} aria-current={activeView === 'trash' ? 'page' : undefined} className={navClass('trash')}>
           <Trash2 className="h-4 w-4 shrink-0" /> {!isCollapsed && <><span className="flex-1 text-left">Trash</span><span className="trash-count rounded-full px-1.5 py-0.5 text-[10px] font-semibold">{trashedDocuments.length}</span></>}
         </button>
-        <button type="button" onClick={() => { if (isCollapsed) setIsCollapsed(false); onShowSettings(); }} title="Settings" className={navClass('settings')}><Settings2 className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Settings'}</button>
+        <button type="button" onClick={onShowSettings} title="Settings" className={navClass('settings')}><Settings2 className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Settings'}</button>
       </nav>
 
       <div className="flex-1" />

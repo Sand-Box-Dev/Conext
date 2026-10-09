@@ -409,7 +409,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
   return (
     <div data-theme={theme} className="conext-app flex h-screen w-screen overflow-hidden bg-[#0b0f17] text-slate-100 font-sans">
       {/* Left Sidebar */}
-      {activeView !== 'settings' && <Sidebar
+      <Sidebar
         activeView={activeView}
         onShowDashboard={() => { setActiveView('dashboard'); setIsChatOpen(false); }}
         onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); }}
@@ -419,12 +419,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         trashShortcutLabel={`${modifierLabel}+3`}
         user={user}
         onLogout={onLogout}
-      />}
+      />
 
       {/* Center Main Workspace */}
       <main className="flex-1 flex flex-col h-full min-w-0 relative">
         {/* Workspace Top Toolbar */}
-        {activeView !== 'settings' && <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-6 flex items-center justify-between z-10">
+        <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3 min-w-0">
             {activeView === 'dashboard' ? (
               <div>
@@ -503,7 +503,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
               </button>}
             </div>
           )}
-        </header>}
+        </header>
 
         {/* Workspace Canvas / States */}
         <div className="flex-1 relative overflow-hidden flex">
@@ -560,15 +560,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
               onDeleteForever={onDeleteForever}
             />
           ) : activeView === 'settings' ? (
-            <Dashboard
-              documents={activeDocuments}
-              onTrashReviewer={onTrashReviewer}
-              trashActionDocumentId={trashAction?.action === 'trash' ? trashAction.documentId : null}
-              trashError={trashError}
-              onOpenReviewer={openReviewer}
-              onUploadSuccess={handleUpload}
-              isUploading={isUploading}
-            />
+            <Settings user={user} modifierLabel={modifierLabel} onUserUpdated={onUserUpdated} />
           ) : isChatOpen && currentDoc ? (
             <ReviewerChat
               key={currentDoc.id}
@@ -633,12 +625,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
           )}
         </div>
       </main>
-      {activeView === 'settings' && <Settings
-        user={user}
-        modifierLabel={modifierLabel}
-        onUserUpdated={onUserUpdated}
-        onBack={() => setActiveView('dashboard')}
-      />}
       {isWarmFilterOn && <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[80] bg-amber-200/20 mix-blend-multiply" />}
       <CommandPalette
         open={isCommandPaletteOpen}
