@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import List
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from ..models import Document, SourceChunk, ConceptMap, ProjectFolder
 from ..schemas import DocumentResponse, ConceptMapResponse
 from ..services.document_service import process_and_store_document
 from ..services.concept_service import extract_and_persist_concept_map, serialize_concept_map
+from ..auth import get_current_user_optional
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -37,8 +38,16 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 @router.get("", response_model=List[DocumentResponse])
-def list_documents(db: Session = Depends(get_db)):
-    docs = db.query(Document).order_by(Document.uploaded_at.desc()).all()
+def list_documents(
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
+    query = db.query(Document)
+    if user:
+        # Show documents belonging to current user or shared documents without a user_id
+        query = query.filter((Document.user_id == user["id"]) | (Document.user_id.is_(None)))
+
+    docs = query.order_by(Document.uploaded_at.desc()).all()
     results = []
     for d in docs:
         chunk_count = db.query(SourceChunk).filter(SourceChunk.document_id == d.id).count()
@@ -51,11 +60,16 @@ def list_documents(db: Session = Depends(get_db)):
             chunk_count=chunk_count,
             has_map=has_map,
             project_id=d.project_id,
+            user_id=d.user_id
         ))
     return results
 
 @router.post("", response_model=DocumentResponse)
-async def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_document(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     filename = file.filename
     ext = os.path.splitext(filename)[1].lower()
     if ext not in [".pdf", ".txt", ".md"]:
@@ -80,7 +94,6 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
 
     # Save to disk
     file_path = os.path.join(UPLOAD_DIR, filename)
-    # Handle duplicates if filename already exists
     base, extension = os.path.splitext(filename)
     counter = 1
     while os.path.exists(file_path):
@@ -90,11 +103,14 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
     with open(file_path, "wb") as f:
         f.write(contents)
 
+    user_id = user["id"] if user else None
+
     # Create document record
     doc = Document(
         filename=os.path.basename(file_path),
         file_path=file_path,
-        processing_status="processing"
+        processing_status="processing",
+        user_id=user_id
     )
     db.add(doc)
     db.commit()
@@ -111,7 +127,8 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
             uploaded_at=doc.uploaded_at,
             processing_status=doc.processing_status,
             chunk_count=chunk_count,
-            has_map=False
+            has_map=False,
+            user_id=doc.user_id
         )
     except Exception as e:
         doc.processing_status = "error"
@@ -137,16 +154,23 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
         chunk_count=chunk_count,
         has_map=has_map,
         project_id=doc.project_id,
+        user_id=doc.user_id
     )
 
 @router.post("/{document_id}/generate", response_model=ConceptMapResponse)
-async def generate_map(document_id: int, db: Session = Depends(get_db)):
+async def generate_map(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
+    user_id = user["id"] if user else doc.user_id
+
     try:
-        concept_map = await extract_and_persist_concept_map(db, document_id)
+        concept_map = await extract_and_persist_concept_map(db, document_id, user_id=user_id)
         return serialize_concept_map(concept_map, db)
     except Exception as e:
         raise HTTPException(

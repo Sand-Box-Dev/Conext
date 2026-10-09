@@ -13,9 +13,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { DocumentUpload } from './DocumentUpload';
-import type { DocumentItem, HealthStatus } from '../types';
+import type { DocumentItem, HealthStatus, UserProfile } from '../types';
 
 interface SidebarProps {
   activeView: 'dashboard' | 'library' | 'workspace';
@@ -27,6 +29,8 @@ interface SidebarProps {
   recentDocuments: DocumentItem[];
   onOpenRecent: (documentId: number) => void;
   onRemoveRecent: (documentId: number) => void;
+  user?: UserProfile | null;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -39,6 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   recentDocuments,
   onOpenRecent,
   onRemoveRecent,
+  user,
+  onLogout,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -153,6 +159,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
       </div>
+
+      {/* User Session Bar */}
+      {user && (
+        <div className="px-4 py-2.5 border-t border-slate-800/80 bg-slate-900/60 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
+              <User className="w-3.5 h-3.5" />
+            </div>
+            <span className="truncate text-slate-300 font-medium text-[11px]" title={user.email}>
+              {user.email || 'Supabase User'}
+            </span>
+          </div>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title="Sign Out"
+              className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* User Session Bar */}
+      {user && (
+        <div className={`px-4 py-2.5 border-t border-slate-800/80 bg-slate-900/60 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} text-xs`}>
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
+              <User className="w-3.5 h-3.5" />
+            </div>
+            {!isCollapsed && (
+              <span className="truncate text-slate-300 font-medium text-[11px]" title={user.email}>
+                {user.email || 'Supabase User'}
+              </span>
+            )}
+          </div>
+          {!isCollapsed && onLogout && (
+            <button
+              onClick={onLogout}
+              title="Sign Out"
+              className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Local System Status (Offline badge & Ollama) */}
       <div className={`${isCollapsed ? 'p-3' : 'p-4'} border-t border-slate-800/80 bg-slate-950/50 space-y-2`}>

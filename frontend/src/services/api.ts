@@ -1,16 +1,119 @@
-import type { HealthStatus, DocumentItem, ConceptMapData, ConceptDetail, ReviewerAnswer, SavedReviewerMessage, ProjectFolder } from '../types';
+import type {
+  HealthStatus,
+  DocumentItem,
+  ConceptMapData,
+  ConceptDetail,
+  ReviewerAnswer,
+  SavedReviewerMessage,
+  ProjectFolder,
+  AuthResponse,
+  UserProfile,
+  AIMemoryItem,
+} from '../types';
 
 const API_BASE = 'http://127.0.0.1:8000/api';
 
+const TOKEN_KEY = 'conext_auth_token';
+const USER_KEY = 'conext_auth_user';
+
+export const authStorage = {
+  getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+  },
+  setToken(token: string) {
+    localStorage.setItem(TOKEN_KEY, token);
+  },
+  getUser(): UserProfile | null {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  },
+  setUser(user: UserProfile) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  },
+  clear() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  },
+};
+
+function getAuthHeaders(): HeadersInit {
+  const token = authStorage.getToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export const api = {
+  // Auth endpoints
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Login failed' }));
+      throw new Error(err.detail || 'Invalid email or password');
+    }
+    const data: AuthResponse = await res.json();
+    if (data.access_token) {
+      authStorage.setToken(data.access_token);
+      authStorage.setUser(data.user);
+    }
+    return data;
+  },
+
+  async signUp(email: string, password: string): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Sign up failed' }));
+      throw new Error(err.detail || 'Sign up failed');
+    }
+    const data: AuthResponse = await res.json();
+    if (data.access_token) {
+      authStorage.setToken(data.access_token);
+      authStorage.setUser(data.user);
+    }
+    return data;
+  },
+
+  async getMe(): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch user profile');
+    return res.json();
+  },
+
+  logout() {
+    authStorage.clear();
+  },
+
+  // Health check
   async getHealth(): Promise<HealthStatus> {
     const res = await fetch(`${API_BASE}/health`);
     if (!res.ok) throw new Error('Failed to fetch backend health status');
     return res.json();
   },
 
+  // Documents
   async getDocuments(): Promise<DocumentItem[]> {
-    const res = await fetch(`${API_BASE}/documents`);
+    const res = await fetch(`${API_BASE}/documents`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch documents');
     return res.json();
   },
@@ -52,6 +155,7 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/documents`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -63,7 +167,9 @@ export const api = {
   },
 
   async getDocument(id: number): Promise<DocumentItem> {
-    const res = await fetch(`${API_BASE}/documents/${id}`);
+    const res = await fetch(`${API_BASE}/documents/${id}`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch document');
     return res.json();
   },
@@ -71,6 +177,7 @@ export const api = {
   async generateConceptMap(documentId: number): Promise<ConceptMapData> {
     const res = await fetch(`${API_BASE}/documents/${documentId}/generate`, {
       method: 'POST',
+      headers: getAuthHeaders(),
     });
 
     if (!res.ok) {
@@ -81,7 +188,9 @@ export const api = {
   },
 
   async getConceptMap(documentId: number): Promise<ConceptMapData> {
-    const res = await fetch(`${API_BASE}/documents/${documentId}/map`);
+    const res = await fetch(`${API_BASE}/documents/${documentId}/map`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Map not found' }));
       throw new Error(err.detail || 'Concept map not found');
@@ -90,13 +199,18 @@ export const api = {
   },
 
   async getConceptDetails(conceptId: number): Promise<ConceptDetail> {
-    const res = await fetch(`${API_BASE}/concepts/${conceptId}`);
+    const res = await fetch(`${API_BASE}/concepts/${conceptId}`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch concept details');
     return res.json();
   },
 
   async improveConceptExplanation(conceptId: number): Promise<{ explanation: string; has_generated_explanation: boolean }> {
-    const res = await fetch(`${API_BASE}/concepts/${conceptId}/explain`, { method: 'POST' });
+    const res = await fetch(`${API_BASE}/concepts/${conceptId}/explain`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Could not generate an explanation' }));
       throw new Error(err.detail || 'Could not generate an explanation');
@@ -107,7 +221,10 @@ export const api = {
   async askReviewer(documentId: number, question: string): Promise<ReviewerAnswer> {
     const res = await fetch(`${API_BASE}/documents/${documentId}/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify({ question }),
     });
     if (!res.ok) {
@@ -118,11 +235,23 @@ export const api = {
   },
 
   async getReviewerChat(documentId: number): Promise<SavedReviewerMessage[]> {
-    const res = await fetch(`${API_BASE}/documents/${documentId}/chat`);
+    const res = await fetch(`${API_BASE}/documents/${documentId}/chat`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Could not load saved chat' }));
       throw new Error(err.detail || 'Could not load saved chat');
     }
+    return res.json();
+  },
+
+  // Memories & context
+  async getMemories(documentId?: number): Promise<AIMemoryItem[]> {
+    const query = documentId ? `?document_id=${documentId}` : '';
+    const res = await fetch(`${API_BASE}/memories${query}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch memories');
     return res.json();
   },
 };
