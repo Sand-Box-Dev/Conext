@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from .database import engine, Base
-from .routers import health, documents, concepts, chat, projects
+from .routers import health, documents, concepts, chat, projects, auth, memories
 
-# Ensure database tables exist
+# Ensure database tables exist in Supabase Postgres or SQLite
 Base.metadata.create_all(bind=engine)
 
 # Add the optional folder reference to existing SQLite databases.
@@ -17,12 +17,12 @@ if "project_id" not in document_columns:
         ))
 
 app = FastAPI(
-    title="Conext - Offline AI Concept Mapping API",
-    description="Local AI-powered interactive concept mapping MVP for educational documents",
-    version="1.0.0"
+    title="Conext - AI Concept Mapping & Knowledge API",
+    description="Offline-grounded AI concept mapping with Supabase Auth, PostgreSQL storage, and persistent AI memories",
+    version="1.1.0"
 )
 
-# CORS configuration: Allow local Vite dev server and localhost origins
+# CORS configuration: Allow local Vite dev server and common frontend origins
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -42,15 +42,17 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(concepts.router)
 app.include_router(chat.router)
 app.include_router(projects.router)
+app.include_router(memories.router)
 
 @app.get("/")
 def root():
     return {
-        "message": "Conext Local AI Concept Mapping API",
+        "message": "Conext AI Concept Mapping API (Powered by Supabase & Ollama)",
         "docs": "/docs",
         "health": "/api/health"
     }

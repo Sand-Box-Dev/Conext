@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -17,6 +17,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), nullable=True, index=True)  # Supabase Auth user UUID
     filename = Column(String(255), nullable=False)
     file_path = Column(String(500), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -27,6 +28,7 @@ class Document(Base):
     chunks = relationship("SourceChunk", back_populates="document", cascade="all, delete-orphan")
     concept_map = relationship("ConceptMap", back_populates="document", uselist=False, cascade="all, delete-orphan")
     project_folder = relationship("ProjectFolder", back_populates="documents")
+    ai_memories = relationship("AIMemory", back_populates="document", cascade="all, delete-orphan")
 
 
 class SourceChunk(Base):
@@ -37,7 +39,7 @@ class SourceChunk(Base):
     page_number = Column(Integer, nullable=False, default=1)
     chunk_index = Column(Integer, nullable=False, default=0)
     content = Column(Text, nullable=False)
-    embedding = Column(Text, nullable=True)  # JSON-serialized sparse vector embedding
+    embedding = Column(Text, nullable=True)  # JSON-serialized vector embedding
 
     # Relationships
     document = relationship("Document", back_populates="chunks")
@@ -60,6 +62,7 @@ class ConceptMap(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(100), nullable=True, index=True)  # Supabase Auth user UUID
     title = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -106,3 +109,25 @@ class NodeSource(Base):
     # Relationships
     node = relationship("ConceptNode", back_populates="source_associations")
     source_chunk = relationship("SourceChunk", back_populates="node_associations")
+
+
+# AI Memory & Context Persistence
+class AIMemory(Base):
+    """
+    Stores persistent AI memories, user-specific learnings, document summaries,
+    or interaction context across chat and concept reasoning sessions.
+    """
+    __tablename__ = "ai_memories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), nullable=True, index=True)  # Supabase Auth user UUID
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=True, index=True)
+    memory_type = Column(String(50), default="insight")  # "insight", "context", "preference", "summary"
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    meta_info = Column(Text, nullable=True)  # JSON-serialized auxiliary metadata
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Relationships
+    document = relationship("Document", back_populates="ai_memories")
