@@ -1,38 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ImagePlus, Trash2 } from 'lucide-react';
 import type { DocumentItem } from '../types';
-import { getReviewerCover, saveReviewerCover } from '../services/coverStorage';
+import { createA4Cover, getReviewerCover, saveReviewerCover } from '../services/coverStorage';
 import { DocumentUpload } from '../components/DocumentUpload';
 import { defaultCoverFor } from '../assets/notebookCovers';
 import { TrashConfirmDialog } from '../components/TrashConfirmDialog';
-
-const makeA4Cover = async (file: File): Promise<Blob> => {
-  const bitmap = await createImageBitmap(file);
-  const ratio = 210 / 297;
-  const sourceRatio = bitmap.width / bitmap.height;
-  let sourceX = 0;
-  let sourceY = 0;
-  let sourceWidth = bitmap.width;
-  let sourceHeight = bitmap.height;
-  if (sourceRatio > ratio) {
-    sourceWidth = bitmap.height * ratio;
-    sourceX = (bitmap.width - sourceWidth) / 2;
-  } else {
-    sourceHeight = bitmap.width / ratio;
-    sourceY = (bitmap.height - sourceHeight) / 2;
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = 840;
-  canvas.height = 1188;
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('Could not prepare this cover image.');
-  context.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare this cover image.')), 'image/jpeg', 0.88);
-  });
-};
 
 interface DashboardProps {
   documents: DocumentItem[];
@@ -50,13 +22,20 @@ const formatDate = (date: string) => new Intl.DateTimeFormat(undefined, {
   year: 'numeric',
 }).format(new Date(date));
 
+const recentHeadlines = [
+  'Freshly added',
+  'Latest notes',
+  'Recent discoveries',
+  'Your latest reads',
+  'Back to learning',
+];
+
 export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer, onUploadSuccess, isUploading, onTrashReviewer, trashActionDocumentId, trashError }) => {
-  const [view, setView] = useState<'all' | 'recent'>('all');
+  const [recentHeadline] = useState(() => recentHeadlines[Math.floor(Math.random() * recentHeadlines.length)]);
   const reviewers = useMemo(() => [...documents].sort(
     (a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime(),
   ), [documents]);
-  const visibleReviewers = view === 'recent' ? reviewers.slice(0, 5) : reviewers;
-  const filteredReviewers = visibleReviewers;
+  const filteredReviewers = reviewers;
   const reviewerIds = documents.map(({ id }) => id).join(',');
   const [customCovers, setCustomCovers] = useState<Record<number, string>>({});
   const [coverError, setCoverError] = useState<string | null>(null);
@@ -98,7 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer,
       return;
     }
     try {
-      const cover = await makeA4Cover(file);
+      const cover = await createA4Cover(file);
       await saveReviewerCover(documentId, cover);
       const url = URL.createObjectURL(cover);
       setCustomCovers((current) => {
@@ -117,26 +96,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer,
       <div className="recent-upload mb-7">
         <DocumentUpload onUploadSuccess={onUploadSuccess} isUploading={isUploading} randomizePrompt />
       </div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 sm:mb-10">
-          <div className="reviewer-view-switch inline-flex items-center gap-1" role="group" aria-label="Filter reviewers">
-            <button
-              type="button"
-              onClick={() => setView('all')}
-              aria-pressed={view === 'all'}
-              className={`rounded-lg border px-3.5 py-1.5 text-xs font-medium transition-colors ${view === 'all' ? 'border-primary/50 text-primary' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('recent')}
-              aria-pressed={view === 'recent'}
-              className={`rounded-lg border px-3.5 py-1.5 text-xs font-medium transition-colors ${view === 'recent' ? 'border-primary/50 text-primary' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
-            >
-              Recent
-            </button>
-          </div>
-          <span className="text-xs text-slate-500">{filteredReviewers.length} of {documents.length} reviewers</span>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-slate-800 sm:text-3xl">{recentHeadline}</h1>
+      <div className="mb-8 flex flex-wrap items-center justify-end gap-3 sm:mb-10">
+          <span className="text-xs text-slate-500">{documents.length} reviewers</span>
       </div>
 
       {coverError && <p role="alert" className="mb-4 text-sm text-rose-600">{coverError}</p>}
@@ -153,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer,
                   type="button"
                   onClick={() => onOpenReviewer(document.id)}
                   aria-label={`Open ${document.filename}`}
-                  className="absolute inset-0 h-full w-full overflow-hidden rounded-xl focus-visible:z-10"
+                  className="absolute inset-0 h-full w-full cursor-pointer overflow-hidden rounded-xl focus-visible:z-10"
                 >
                   <img
                     src={customCovers[document.id] ?? defaultCoverFor(document.id)}

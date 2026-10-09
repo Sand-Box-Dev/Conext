@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, Check, Folder, FolderOpen, FolderPlus, GripVertical, Info, LoaderCircle, MoreHorizontal, Pencil, Search, Trash2, X } from 'lucide-react';
+import { ArrowUpRight, Check, Folder, FolderOpen, FolderPlus, ImagePlus, Info, LoaderCircle, MoreHorizontal, Pencil, Search, Trash2, X } from 'lucide-react';
 import type { DocumentItem, ProjectFolder } from '../types';
-import { getReviewerCover } from '../services/coverStorage';
+import { createA4Cover, getReviewerCover, saveReviewerCover } from '../services/coverStorage';
 import { defaultCoverFor } from '../assets/notebookCovers';
 import { TrashConfirmDialog } from '../components/TrashConfirmDialog';
 
@@ -34,12 +34,13 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
   const [pendingDeleteFolder, setPendingDeleteFolder] = useState<ProjectFolder | null>(null);
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [movingDocumentId, setMovingDocumentId] = useState<number | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<number | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<number | 'all' | null>(null);
   const [draggingDocumentId, setDraggingDocumentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingTrash, setPendingTrash] = useState<DocumentItem | null>(null);
   const [customCovers, setCustomCovers] = useState<Record<number, string>>({});
+  const [coverError, setCoverError] = useState<string | null>(null);
   const documentIds = documents.map(({ id }) => id).join(',');
 
   useEffect(() => {
@@ -111,6 +112,31 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
     event.currentTarget.closest('details')?.removeAttribute('open');
   };
 
+  const handleCoverChange = async (documentId: number, file: File | undefined) => {
+    if (!file) return;
+    setCoverError(null);
+    if (!file.type.startsWith('image/')) {
+      setCoverError('Choose an image file for the cover.');
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setCoverError('Cover images must be 12 MB or smaller.');
+      return;
+    }
+    try {
+      const cover = await createA4Cover(file);
+      await saveReviewerCover(documentId, cover);
+      const url = URL.createObjectURL(cover);
+      setCustomCovers((current) => {
+        const previous = current[documentId];
+        if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+        return { ...current, [documentId]: url };
+      });
+    } catch (cause) {
+      setCoverError(cause instanceof Error ? cause.message : 'Could not save this cover.');
+    }
+  };
+
   const moveDocument = async (documentId: number, value: string) => {
     const projectId = value ? Number(value) : null;
     setMovingDocumentId(documentId);
@@ -126,7 +152,7 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
 
   const handleFolderDrop = (event: React.DragEvent, projectId: number | null) => {
     event.preventDefault();
-    const documentId = Number(event.dataTransfer.getData('text/reviewer-id'));
+    const documentId = Number(event.dataTransfer.getData('text/reviewer-id') || event.dataTransfer.getData('text/plain'));
     setDropTargetId(null);
     setDraggingDocumentId(null);
     if (!Number.isInteger(documentId) || documentId <= 0) return;
@@ -141,7 +167,7 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
     void moveDocument(documentId, projectId === null ? '' : String(projectId));
   };
 
-  const handleFolderDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleFolderDragLeave = (event: React.DragEvent<HTMLElement>) => {
     const relatedTarget = event.relatedTarget;
     if (!(relatedTarget instanceof Node) || !event.currentTarget.contains(relatedTarget)) setDropTargetId(null);
   };
@@ -149,6 +175,7 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
   const handleDocumentDragStart = (event: React.DragEvent, documentId: number) => {
     setDraggingDocumentId(documentId);
     event.dataTransfer.setData('text/reviewer-id', String(documentId));
+    event.dataTransfer.setData('text/plain', String(documentId));
     event.dataTransfer.effectAllowed = 'move';
   };
 
@@ -189,7 +216,10 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
             <button
               type="button"
               onClick={() => setActiveFolderId(null)}
-              className={`library-folder w-full ${activeFolderId === null ? 'is-active' : ''}`}
+              onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropTargetId('all'); }}
+              onDragLeave={handleFolderDragLeave}
+              onDrop={(event) => handleFolderDrop(event, null)}
+              className={`library-folder w-full ${activeFolderId === null ? 'is-active' : ''} ${dropTargetId === 'all' ? 'is-drop-target' : ''}`}
             >
               <FolderOpen className="h-5 w-5 shrink-0" strokeWidth={1.8} />
               <span className="min-w-0 flex-1 truncate">All files</span>
@@ -198,21 +228,21 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
             {projects.map((project) => (
               <div
                 key={project.id}
-                onDragOver={(event) => { event.preventDefault(); setDropTargetId(project.id); }}
+                onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropTargetId(project.id); }}
                 onDragLeave={handleFolderDragLeave}
                 onDrop={(event) => handleFolderDrop(event, project.id)}
-                className={`relative min-w-0 rounded-[.85rem] ${dropTargetId === project.id ? 'is-drop-target' : ''}`}
+                className={`library-folder min-w-0 ${activeFolderId === project.id ? 'is-active' : ''} ${dropTargetId === project.id ? 'is-drop-target' : ''}`}
               >
                 <button
                   type="button"
                   onClick={() => setActiveFolderId(project.id)}
-                  className={`library-folder w-full pr-12 ${activeFolderId === project.id ? 'is-active' : ''} ${dropTargetId === project.id ? 'is-drop-target' : ''}`}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-[.7rem] text-left"
                 >
                   <Folder className="h-5 w-5 shrink-0" strokeWidth={1.8} />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                  <span className="text-xs text-slate-500">{dropTargetId === project.id ? 'Drop here' : project.document_count}</span>
+                  <span className="shrink-0 text-xs text-slate-500">{project.document_count}</span>
                 </button>
-                <details className="dropdown dropdown-end absolute right-1 top-1/2 z-30 -translate-y-1/2">
+                <details className="dropdown dropdown-end z-30 shrink-0">
                   <summary className="btn btn-ghost btn-xs btn-square list-none text-slate-400 hover:text-slate-100" aria-label={`Options for ${project.name}`} title="Folder options">
                     <MoreHorizontal className="h-4 w-4" />
                   </summary>
@@ -231,6 +261,8 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
           )}
         </section>
 
+        {coverError && <p role="alert" className="mt-5 text-sm text-rose-600">{coverError}</p>}
+
         <section className="mt-10">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-slate-200">
@@ -248,7 +280,7 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
                   onDragStart={(event) => handleDocumentDragStart(event, document.id)}
                   onDragEnd={handleDocumentDragEnd}
                   title="Drag this reviewer to a folder"
-                  className={`group min-w-0 cursor-grab transition-transform duration-150 active:cursor-grabbing ${draggingDocumentId === document.id ? 'reviewer-drag-source' : ''}`}
+                  className={`reviewer-tile group min-w-0 cursor-grab transition-transform duration-150 active:cursor-grabbing ${draggingDocumentId === document.id ? 'reviewer-drag-source' : ''}`}
                 >
                   <div className="reviewer-cover-frame relative mx-auto aspect-[210/297] w-[84%] overflow-hidden rounded-xl bg-slate-900/10">
                     <button
@@ -258,7 +290,7 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
                       onDragEnd={handleDocumentDragEnd}
                       onClick={() => onOpenReviewer(document.id)}
                       aria-label={`Open ${document.filename}`}
-                      className="absolute inset-0 h-full w-full overflow-hidden rounded-xl"
+                      className="absolute inset-0 h-full w-full cursor-pointer overflow-hidden rounded-xl"
                     >
                       <img src={customCovers[document.id] ?? defaultCoverFor(document.id)} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                       <ArrowUpRight className="reviewer-open-indicator absolute right-2.5 top-2.5 h-4 w-4 rounded-full bg-black/30 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={1.8} />
@@ -266,9 +298,25 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
                     <button type="button" onClick={() => setPendingTrash(document)} aria-label={`Move ${document.filename} to Trash`} title="Move to Trash" className="reviewer-trash-action absolute left-2.5 top-2.5 z-20 rounded-lg p-2 opacity-100 shadow-sm backdrop-blur-md transition sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100">
                       <Trash2 className="h-4 w-4" strokeWidth={1.8} />
                     </button>
-                    <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                      <span className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm"><GripVertical className="h-3 w-3" />Drag to move</span>
-                    </div>
+                    <input
+                      id={`library-cover-input-${document.id}`}
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      aria-label={`Choose a cover for ${document.filename}`}
+                      onChange={(event) => {
+                        void handleCoverChange(document.id, event.target.files?.[0]);
+                        event.currentTarget.value = '';
+                      }}
+                    />
+                    <label
+                      htmlFor={`library-cover-input-${document.id}`}
+                      className="reviewer-cover-edit absolute bottom-2.5 right-2.5 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-medium opacity-100 shadow-sm backdrop-blur-md transition-opacity sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100"
+                      title="Choose an A4 cover image"
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      <span>Edit cover</span>
+                    </label>
                   </div>
                   <button type="button" draggable onDragStart={(event) => handleDocumentDragStart(event, document.id)} onDragEnd={handleDocumentDragEnd} onClick={() => onOpenReviewer(document.id)} className="mt-3 block w-full cursor-grab truncate text-left text-sm font-medium text-slate-200 hover:text-primary active:cursor-grabbing" title={`${document.filename} · Drag to move`}>{document.filename}</button>
                   <p className="mt-1 text-xs text-slate-500">Added {formatDate(document.uploaded_at)}</p>
@@ -291,12 +339,9 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
       </div>
 
       {folderDialogMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSavingFolder) { setFolderDialogMode(null); setEditingFolder(null); } }}>
-          <form onSubmit={submitFolder} role="dialog" aria-modal="true" aria-labelledby="create-folder-title" className="create-folder-dialog w-full max-w-md rounded-2xl border border-slate-800 bg-white p-6 shadow-2xl">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">{folderDialogMode === 'rename' ? <Pencil className="h-5 w-5" strokeWidth={1.8} /> : <FolderPlus className="h-5 w-5" strokeWidth={1.8} />}</span>
-              <h2 id="create-folder-title" className="text-lg font-semibold text-slate-900">{folderDialogMode === 'rename' ? 'Rename folder' : 'New folder'}</h2>
-            </div>
+        <div className="modal modal-open z-[90] bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSavingFolder) { setFolderDialogMode(null); setEditingFolder(null); } }}>
+          <form onSubmit={submitFolder} role="dialog" aria-modal="true" aria-labelledby="create-folder-title" className="modal-box minimal-trash-dialog w-full max-w-[22rem] rounded-2xl border p-5 shadow-xl">
+            <h2 id="create-folder-title" className="text-lg font-semibold tracking-tight">{folderDialogMode === 'rename' ? 'Rename folder' : 'New folder'}</h2>
             <input
               autoFocus
               maxLength={80}
@@ -304,12 +349,12 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
               onChange={(event) => setFolderName(event.target.value)}
               placeholder="Folder name"
               aria-label="Folder name"
-              className="input w-full border-slate-300 bg-white text-slate-900 placeholder:text-slate-400"
+              className="folder-name-field mt-4 w-full rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-400"
             />
             {error && <p role="alert" className="mt-2 text-sm text-rose-600">{error}</p>}
-            <div className="mt-5 flex justify-end gap-2">
-              <button className="btn btn-ghost" type="button" onClick={() => { setFolderDialogMode(null); setEditingFolder(null); setFolderName(''); }}>Cancel</button>
-              <button className="btn btn-primary gap-2" type="submit" disabled={!folderName.trim() || isSavingFolder}>
+            <div className="mt-5 flex justify-end gap-2 border-t pt-3">
+              <button className="minimal-trash-cancel" type="button" disabled={isSavingFolder} onClick={() => { setFolderDialogMode(null); setEditingFolder(null); setFolderName(''); }}>Cancel</button>
+              <button className="minimal-trash-confirm inline-flex items-center justify-center gap-2 disabled:cursor-wait disabled:opacity-60" type="submit" disabled={!folderName.trim() || isSavingFolder}>
                 {isSavingFolder ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 {folderDialogMode === 'rename' ? 'Save changes' : 'Create folder'}
               </button>

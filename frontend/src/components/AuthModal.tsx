@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import {
-  Brain,
   Lock,
   Mail,
   ArrowRight,
-  Sparkles,
   ShieldCheck,
   Cpu,
   Database,
   AlertCircle,
   Eye,
   EyeOff,
+  UserRound,
   UserCheck,
 } from 'lucide-react';
+import conextLogo from '../assets/logo/conext-logo-256.webp';
 import { api } from '../services/api';
 import type { UserProfile } from '../types';
 
@@ -24,6 +24,8 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGuest }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [pendingSignupName, setPendingSignupName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +43,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
       return;
     }
 
+    if (mode === 'signup' && !displayName.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+
     if (mode === 'signup' && password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -55,13 +62,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
     try {
       if (mode === 'login') {
         const res = await api.login(email.trim(), password);
-        onSuccess(res.user);
+        if (pendingSignupName) {
+          const user = await api.updateProfile({ display_name: pendingSignupName });
+          setPendingSignupName('');
+          onSuccess(user);
+        } else {
+          onSuccess(res.user);
+        }
       } else {
         const res = await api.signUp(email.trim(), password);
         if (res.access_token) {
-          onSuccess(res.user);
+          const user = await api.updateProfile({ display_name: displayName.trim() });
+          onSuccess(user);
         } else {
-          setNotice('Account registered! If confirmation is required, check your email.');
+          setPendingSignupName(displayName.trim());
+          setNotice('Account registered! Check your email if confirmation is required, then sign in to finish setup.');
           setMode('login');
         }
       }
@@ -84,53 +99,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
       <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-2xl border border-slate-800/80 rounded-2xl shadow-2xl p-8 z-10 transition-all">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-700 via-slate-800 to-black shadow-lg shadow-black/25 mb-4">
-            <Brain className="w-8 h-8 text-white" />
-            <div className="absolute -bottom-1 -right-1 p-1 bg-slate-900 rounded-full border border-slate-800">
-              <Sparkles className="w-3.5 h-3.5 text-slate-300" />
-            </div>
-          </div>
+          <img src={conextLogo} alt="" className="mb-4 h-20 w-20 rounded-2xl object-contain" />
 
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
             Notepad AI
-            <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20">
-              AI Map
-            </span>
           </h1>
-          <p className="text-sm text-slate-400 mt-1.5">
-            Interactive AI Concept Mapping & Persistent Knowledge Memory
-          </p>
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="grid grid-cols-2 p-1 bg-slate-950/60 border border-slate-800/80 rounded-xl mb-6">
+        <div className="mb-6 flex justify-center gap-2" role="tablist" aria-label="Account access">
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'login'}
             onClick={() => {
               setMode('login');
               setError(null);
             }}
-            className={`py-2 text-sm font-medium rounded-lg transition-all ${
+            className={`auth-mode-toggle rounded-lg px-4 py-2 text-sm transition-colors ${
               mode === 'login'
-                ? 'bg-slate-900 text-white shadow-md shadow-black/30'
+                ? 'bg-slate-900 text-white shadow-sm shadow-black/10'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Sign In
+            Sign in
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'signup'}
             onClick={() => {
               setMode('signup');
               setError(null);
             }}
-            className={`py-2 text-sm font-medium rounded-lg transition-all ${
+            className={`auth-mode-toggle rounded-lg px-4 py-2 text-sm transition-colors ${
               mode === 'signup'
-                ? 'bg-slate-900 text-white shadow-md shadow-black/30'
+                ? 'bg-slate-900 text-white shadow-sm shadow-black/10'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Create Account
+            Create account
           </button>
         </div>
 
@@ -151,6 +159,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
 
         {/* Auth Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Name
+              </label>
+              <div className="relative">
+                <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  autoComplete="name"
+                  required
+                  maxLength={80}
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="Your name"
+                  className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          )}
           {/* Email Field */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
@@ -163,8 +191,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
+                placeholder="developer@conext.ai"
+                className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all"
               />
             </div>
           </div>
@@ -182,14 +210,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
+                className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-slate-500 hover:text-slate-300 transition-colors"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </button>
             </div>
           </div>
@@ -208,7 +236,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
+                  className="auth-input !text-[#202632] w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -218,7 +246,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-slate-700 to-black hover:from-slate-800 hover:to-black text-white font-medium text-sm shadow-lg shadow-black/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="auth-submit w-full mt-2 flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-medium shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -230,7 +258,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
               </span>
             ) : (
               <>
-                <span>{mode === 'login' ? 'Sign In to Workspace' : 'Create Supabase Account'}</span>
+                <span>{mode === 'login' ? 'Sign in' : 'Create account'}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -239,20 +267,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
 
         {/* Continue as Guest option */}
         {onContinueAsGuest && (
-          <div className="mt-4 pt-4 border-t border-slate-800/80 text-center">
+          <div className="mt-4 pt-4 text-center">
             <button
               type="button"
               onClick={onContinueAsGuest}
               className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1.5"
             >
-              <span>Explore as Guest (Offline Mode)</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>Explore as Guest</span>
             </button>
           </div>
         )}
 
         {/* Footer Feature Badges */}
-        <div className="mt-8 pt-6 border-t border-slate-800/60 grid grid-cols-3 gap-2 text-center text-xs text-slate-500">
+        <div className="mt-8 pt-6 grid grid-cols-3 gap-2 text-center text-xs text-slate-500">
           <div className="flex flex-col items-center gap-1">
             <ShieldCheck className="w-4 h-4 text-slate-500" />
             <span>Supabase Auth</span>
@@ -262,7 +289,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
             <span>Local AI</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <Database className="w-4 h-4 text-emerald-400" />
+            <Database className="h-6 w-6" />
             <span>Postgres DB</span>
           </div>
         </div>

@@ -135,6 +135,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
         onNodeClick={onNodeClick}
         nodesDraggable
         fitView
+        fitViewOptions={{ padding: 0.12, minZoom: 0.45, maxZoom: 1.2 }}
         minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}

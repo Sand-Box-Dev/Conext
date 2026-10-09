@@ -83,7 +83,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             fileInputRef.current?.click();
           }
         }}
-        className={`border-2 border-dashed rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center ${
+        className={`upload-dropzone border-2 border-dashed rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center ${dragOver ? 'is-drag-over' : ''} ${
           dragOver
             ? 'border-slate-500 bg-slate-500/10'
             : 'border-slate-700/80 hover:border-slate-500/50 bg-slate-900/40 hover:bg-slate-900/80'
@@ -97,12 +97,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           className="hidden"
         />
 
-        <div className="upload-drop-icon w-9 h-9 rounded-lg bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mb-2 text-slate-500">
+        <div className={`upload-drop-icon w-9 h-9 rounded-lg bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mb-2 text-slate-500 ${dragOver ? 'upload-drop-icon-active' : ''}`}>
           <UploadCloud className="w-5 h-5" />
         </div>
 
         <p className="text-xs font-semibold text-slate-200 mb-0.5">
-          {isUploading ? 'Adding your file…' : studyPrompt}
+          {isUploading ? 'Adding your file…' : dragOver ? 'Ooh, a file! Drop it here.' : studyPrompt}
         </p>
         <p className="text-[10px] text-slate-400">
           PDF, TXT, or Markdown · Up to 10 MB

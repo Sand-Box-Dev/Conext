@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { BookOpen, Sparkles, Layers } from 'lucide-react';
+import { BookOpen, List, Layers } from 'lucide-react';
 import type { ConceptNodeData } from '../types';
 
 interface ConceptNodeProps {
@@ -16,19 +16,19 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
     if (isRoot) {
       return {
         card: selected
-          ? 'concept-node-selected bg-slate-950/80 border-slate-400 ring-1 ring-slate-300/70'
+          ? 'concept-node-selected bg-slate-950/80 border-slate-400'
           : 'bg-slate-900/90 border-slate-500/60 hover:border-slate-400',
-        badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-        icon: <Sparkles className="w-4 h-4 text-slate-400" />,
+        typeLabel: 'text-slate-500',
+        icon: <BookOpen className="w-4 h-4 text-slate-500" />,
         label: 'text-slate-100 font-bold text-base',
       };
     }
     if (isSubconcept) {
       return {
         card: selected
-          ? 'concept-node-selected bg-slate-800 border-slate-300 ring-1 ring-slate-200/70'
+          ? 'concept-node-selected bg-slate-800 border-slate-300'
           : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-500',
-        badge: 'bg-slate-800 text-slate-300 border-slate-700',
+        typeLabel: 'text-slate-500',
         icon: <Layers className="w-3.5 h-3.5 text-slate-400" />,
         label: 'text-slate-200 font-medium text-xs',
       };
@@ -36,10 +36,10 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
     // Default concept
     return {
       card: selected
-        ? 'concept-node-selected bg-slate-950/80 border-slate-300 ring-1 ring-slate-200/70'
+        ? 'concept-node-selected bg-slate-950/80 border-slate-300'
         : 'bg-slate-900/90 border-slate-500/40 hover:border-slate-400',
-      badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-      icon: <BookOpen className="w-3.5 h-3.5 text-slate-400" />,
+      typeLabel: 'text-slate-500',
+      icon: <List className="w-3.5 h-3.5 text-slate-500" />,
       label: 'text-slate-100 font-semibold text-sm',
     };
   };
@@ -59,15 +59,13 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-1.5">
           {style.icon}
-          <span
-            className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border ${style.badge}`}
-          >
+          <span className={`text-[10px] uppercase tracking-wider font-semibold ${style.typeLabel}`}>
             {data.node_type}
           </span>
         </div>
         {data.source_chunk_ids?.length > 0 && (
-          <span className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/60 font-mono">
-            {data.source_chunk_ids.length} src
+          <span className="text-[10px] text-slate-500">
+            {data.source_chunk_ids.length} sources
           </span>
         )}
       </div>

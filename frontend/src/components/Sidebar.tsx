@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User } from 'lucide-react';
+import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User, Search } from 'lucide-react';
+import conextLogo from '../assets/logo/conext-logo-256.webp';
 import type { DocumentItem, UserProfile } from '../types';
 
 interface SidebarProps {
@@ -8,8 +9,10 @@ interface SidebarProps {
   onShowLibrary: () => void;
   onShowTrash: () => void;
   onShowSettings: () => void;
+  onOpenSearch: () => void;
   trashedDocuments: DocumentItem[];
   trashShortcutLabel: string;
+  modifierLabel: string;
   user?: UserProfile | null;
   onLogout?: () => void;
 }
@@ -20,8 +23,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onShowLibrary,
   onShowTrash,
   onShowSettings,
+  onOpenSearch,
   trashedDocuments,
   trashShortcutLabel,
+  modifierLabel,
   user,
   onLogout,
 }) => {
@@ -34,7 +39,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className={`flex h-full shrink-0 select-none flex-col justify-between border-r border-slate-800 bg-slate-900/90 backdrop-blur-xl transition-[width] duration-200 ${isCollapsed ? 'w-[4.5rem]' : 'w-80'}`}>
       <div className={`${isCollapsed ? 'p-3' : 'px-5 py-4'} border-b border-slate-800/80`}>
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-3' : 'justify-between gap-2.5'}`}>
-          <h1 className={`font-bold tracking-tight text-white ${isCollapsed ? 'text-[10px]' : 'text-lg'}`}>Notepad AI</h1>
+          <div className={`flex min-w-0 items-center ${isCollapsed ? 'justify-center' : 'gap-2'}`}>
+            <img src={conextLogo} alt="" className="h-7 w-7 shrink-0 rounded-lg object-contain" />
+            {!isCollapsed && <h1 className="font-bold tracking-tight text-white text-lg">Notepad AI</h1>}
+          </div>
           <button onClick={() => setIsCollapsed((collapsed) => !collapsed)} className="btn btn-ghost btn-sm btn-square shrink-0 text-slate-400 hover:text-white" title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
             {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
@@ -42,6 +50,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav aria-label="Main navigation" className={`space-y-1 border-b border-slate-800/80 py-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
+        <button type="button" onClick={onOpenSearch} title={`Search reviewers (${modifierLabel}+K)`} aria-label={`Search reviewers (${modifierLabel}+K)`} className={`sidebar-search mb-2 flex w-full items-center rounded-xl border border-slate-800/80 py-2.5 text-sm text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-slate-200 ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3 text-left'}`}>
+          <Search className="h-4 w-4 shrink-0" />
+          {!isCollapsed && <><span className="flex-1">Search</span><kbd>{modifierLabel}+K</kbd></>}
+        </button>
         <button type="button" onClick={onShowDashboard} title="Recent" className={navClass('dashboard')}><Clock3 className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Recent'}</button>
         <button type="button" onClick={onShowLibrary} title="Library" className={navClass('library')}><FolderKanban className="h-4 w-4 shrink-0" /> {!isCollapsed && 'Library'}</button>
         <button type="button" onClick={onShowTrash} title={`Trash (${trashShortcutLabel})`} aria-current={activeView === 'trash' ? 'page' : undefined} className={navClass('trash')}>

@@ -1,40 +1,53 @@
 import React from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import { X, Sparkles, FileText, CheckCircle2, Quote, WandSparkles, LoaderCircle } from 'lucide-react';
+import { X, Sparkles, FileText, Quote, WandSparkles, LoaderCircle } from 'lucide-react';
 import type { ConceptDetail } from '../types';
 
 const mathPattern = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
 
-const ExplanationMath: React.FC<{ text: string }> = ({ text }) => (
-  <>
-    {text.split(mathPattern).map((part, index) => {
-      if (part.startsWith('$$') && part.endsWith('$$')) {
-        return (
-          <div
-            key={index}
-            className="my-3 overflow-x-auto text-center"
-            dangerouslySetInnerHTML={{
-              __html: katex.renderToString(part.slice(2, -2), { displayMode: true, throwOnError: false }),
-            }}
-          />
-        );
-      }
-      if (part.startsWith('$') && part.endsWith('$')) {
-        return (
-          <span
-            key={index}
-            className="whitespace-nowrap"
-            dangerouslySetInnerHTML={{
-              __html: katex.renderToString(part.slice(1, -1), { throwOnError: false }),
-            }}
-          />
-        );
-      }
-      return <React.Fragment key={index}>{part}</React.Fragment>;
-    })}
-  </>
-);
+const ExplanationMath: React.FC<{ text: string }> = ({ text }) => {
+  const paragraphs = text
+    .replace(/\r\n/g, '\n')
+    .replace(/([.!?])\s+(?=(?:However|Therefore|Additionally|In contrast|For example|This means|Meanwhile)\b)/gi, '$1\n\n')
+    .split(/\n\s*\n|\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return (
+    <>
+      {paragraphs.map((paragraph, paragraphIndex) => (
+        <div key={paragraphIndex} className="mb-3 last:mb-0">
+          {paragraph.split(mathPattern).map((part, index) => {
+            if (part.startsWith('$$') && part.endsWith('$$')) {
+              return (
+                <div
+                  key={index}
+                  className="my-3 overflow-x-auto text-center"
+                  dangerouslySetInnerHTML={{
+                    __html: katex.renderToString(part.slice(2, -2), { displayMode: true, throwOnError: false }),
+                  }}
+                />
+              );
+            }
+            if (part.startsWith('$') && part.endsWith('$')) {
+              return (
+                <span
+                  key={index}
+                  className="whitespace-nowrap"
+                  dangerouslySetInnerHTML={{
+                    __html: katex.renderToString(part.slice(1, -1), { throwOnError: false }),
+                  }}
+                />
+              );
+            }
+            return <React.Fragment key={index}>{part}</React.Fragment>;
+          })}
+        </div>
+      ))}
+    </>
+  );
+};
 
 interface ConceptDetailsProps {
   detail: ConceptDetail | null;
@@ -102,18 +115,12 @@ export const ConceptDetails: React.FC<ConceptDetailsProps> = ({
       {/* Header */}
       <div className="p-5 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/80">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-300 border border-slate-500/30">
-              {detail.node_type}
-            </span>
-            <div className="flex items-center gap-1 text-[11px] text-emerald-400">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Grounded</span>
-            </div>
-          </div>
           <h2 className="text-lg font-bold text-white tracking-tight leading-snug">
             {detail.label}
           </h2>
+          <p className="mt-1 text-xs font-medium capitalize tracking-wide text-slate-500">
+            {detail.node_type}
+          </p>
         </div>
         <button
           onClick={onClose}
@@ -134,12 +141,12 @@ export const ConceptDetails: React.FC<ConceptDetailsProps> = ({
               <span>Explanation</span>
             </div>
             <button
-              className="btn btn-ghost btn-xs gap-1.5 text-primary"
+              className="explanation-improve-button btn btn-ghost btn-xs gap-1.5 text-primary"
               onClick={onImproveExplanation}
               disabled={isGeneratingExplanation}
               title="Generate a clearer explanation using this concept's cited passages"
             >
-              {isGeneratingExplanation ? <LoaderCircle className="w-3.5 h-3.5 animate-spin" /> : <WandSparkles className="w-3.5 h-3.5" />}
+              {isGeneratingExplanation ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <WandSparkles className="h-3 w-3" />}
               {isGeneratingExplanation ? 'Writing…' : detail.has_generated_explanation ? 'Improve' : 'Explain'}
             </button>
           </div>
@@ -154,7 +161,7 @@ export const ConceptDetails: React.FC<ConceptDetailsProps> = ({
           {explanationGenerationError && (
             <div role="alert" className="alert alert-warning mb-2 py-2 text-xs">{explanationGenerationError}</div>
           )}
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 text-slate-200 text-sm leading-relaxed">
+          <div className="mt-3 text-slate-200 text-sm leading-relaxed">
             <ExplanationMath text={detail.explanation} />
           </div>
         </div>

@@ -77,7 +77,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, modifierLabel, onUserU
             </div>
             {error && <p role="alert" className="text-sm text-error">{error}</p>}
             {success && <p role="status" className="flex items-center gap-2 text-sm text-success"><Check className="h-4 w-4" />{success}</p>}
-            <div className="flex justify-end"><button className="btn btn-primary" type="submit" disabled={saving || (!name.trim() && !password)}>{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}{saving ? 'Saving…' : 'Save changes'}</button></div>
+            <div className="flex justify-end"><button className="settings-save-button btn" type="submit" disabled={saving || (!name.trim() && !password)}>{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}{saving ? 'Saving…' : 'Save changes'}</button></div>
           </>}
         </div>
       </form>

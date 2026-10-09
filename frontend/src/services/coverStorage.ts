@@ -2,6 +2,37 @@ const DATABASE_NAME = 'conext-covers';
 const STORE_NAME = 'reviewer-covers';
 let databasePromise: Promise<IDBDatabase> | null = null;
 
+export const createA4Cover = async (file: File): Promise<Blob> => {
+  const bitmap = await createImageBitmap(file);
+  const ratio = 210 / 297;
+  const sourceRatio = bitmap.width / bitmap.height;
+  let sourceX = 0;
+  let sourceY = 0;
+  let sourceWidth = bitmap.width;
+  let sourceHeight = bitmap.height;
+  if (sourceRatio > ratio) {
+    sourceWidth = bitmap.height * ratio;
+    sourceX = (bitmap.width - sourceWidth) / 2;
+  } else {
+    sourceHeight = bitmap.width / ratio;
+    sourceY = (bitmap.height - sourceHeight) / 2;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 840;
+  canvas.height = 1188;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    bitmap.close();
+    throw new Error('Could not prepare this cover image.');
+  }
+  context.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare this cover image.')), 'image/jpeg', 0.88);
+  });
+};
+
 const openDatabase = () => {
   if (!('indexedDB' in window)) return Promise.reject(new Error('Cover storage is unavailable in this browser.'));
   if (!databasePromise) {

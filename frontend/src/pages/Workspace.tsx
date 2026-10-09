@@ -500,8 +500,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
         onShowTrash={() => { setActiveView('trash'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
         onShowSettings={() => { setActiveView('settings'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
+        onOpenSearch={() => { setPaletteMode('commands'); setIsCommandPaletteOpen(true); }}
         trashedDocuments={trashedDocuments}
         trashShortcutLabel={`${modifierLabel}+3`}
+        modifierLabel={modifierLabel}
         user={user}
         onLogout={onLogout}
       />
@@ -684,12 +686,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
                 selectedNodeId={null}
                 onSelectNode={() => undefined}
               />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/90 px-6 py-5 text-center shadow-xl">
-                  <Layers className="mx-auto mb-3 h-7 w-7 text-slate-500" />
-                  <h2 className="text-sm font-semibold text-slate-200">Your mind map will appear here</h2>
-                  <p className="mt-1 text-xs text-slate-400">Generate a map from the toolbar when you’re ready.</p>
-                </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => void handleGenerateConceptMap()}
+                  disabled={isGeneratingMap}
+                  className="mindmap-action btn gap-2 rounded-xl px-5 font-medium shadow-sm transition-colors"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate mind map
+                </button>
               </div>
             </div>
           ) : (
