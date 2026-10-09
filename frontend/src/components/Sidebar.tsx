@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User, Search } from 'lucide-react';
+import { Clock3, FolderKanban, Trash2, PanelLeftClose, PanelLeftOpen, Settings2, LogOut, User, Search, WifiOff, HelpCircle, Layers, PenTool } from 'lucide-react';
 import conextLogo from '../assets/logo/conext-logo-256.webp';
 import type { DocumentItem, UserProfile } from '../types';
 
@@ -18,6 +18,7 @@ interface SidebarProps {
   modifierLabel: string;
   user?: UserProfile | null;
   onLogout?: () => void;
+  isOffline?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   modifierLabel,
   user,
   onLogout,
+  isOffline,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -69,13 +71,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <nav aria-label="Study tools" className={`space-y-1 border-b border-slate-800/80 py-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
-        <button type="button" onClick={onShowQuiz} title="Quiz" aria-current={activeView === 'quiz' ? 'page' : undefined} className={navClass('quiz')}>{isCollapsed ? 'Q' : 'Quiz'}</button>
-        <button type="button" onClick={onShowFlashcards} title="Flash-Card" aria-current={activeView === 'flashcards' ? 'page' : undefined} className={navClass('flashcards')}>{isCollapsed ? 'F' : 'Flash-Card'}</button>
-        <button type="button" onClick={onShowEssay} title="Essay" aria-current={activeView === 'essay' ? 'page' : undefined} className={navClass('essay')}>{isCollapsed ? 'E' : 'Essay'}</button>
+        <button type="button" onClick={onShowQuiz} title="Quiz" aria-current={activeView === 'quiz' ? 'page' : undefined} className={navClass('quiz')}>
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          {!isCollapsed && 'Quiz'}
+        </button>
+        <button type="button" onClick={onShowFlashcards} title="Flash-Card" aria-current={activeView === 'flashcards' ? 'page' : undefined} className={navClass('flashcards')}>
+          <Layers className="h-4 w-4 shrink-0" />
+          {!isCollapsed && 'Flash-Card'}
+        </button>
+        <button type="button" onClick={onShowEssay} title="Essay" aria-current={activeView === 'essay' ? 'page' : undefined} className={navClass('essay')}>
+          <PenTool className="h-4 w-4 shrink-0" />
+          {!isCollapsed && 'Essay'}
+        </button>
       </nav>
 
       <div className="flex-1" />
       <div className={`${isCollapsed ? 'p-2' : 'p-4'} bg-slate-950/50`}>
+        {isOffline && (
+          <div className={`mb-2 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 ${isCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'}`} title="You are working offline with cached data">
+            <WifiOff className="h-3.5 w-3.5 shrink-0" />
+            {!isCollapsed && <span className="text-[11px] font-medium">Offline Mode</span>}
+          </div>
+        )}
         {user && <div className={`flex items-center border-t border-slate-800/80 px-3 py-2.5 text-xs ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex min-w-0 items-center gap-2">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-500/30 bg-slate-500/20 text-slate-500"><User className="h-3.5 w-3.5" /></span>

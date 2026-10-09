@@ -115,3 +115,89 @@ async def ask_reviewer(
             for p in passages
         ],
     )
+
+
+async def stream_reviewer(
+    db: Session,
+    document_id: int,
+    question: str,
+    history: list[dict[str, str]] | None = None,
+):
+    """
+    Streams tokens from Ollama using SSE chunks.
+    Yields:
+      - First: dict with event "citations"
+      - During generation: dict with event "chunk", data = delta text
+      - Finally: dict with event "done", data = full aggregated answer
+    """
+    import json
+
+    question = question.strip()
+    if not question:
+        raise ValueError("Enter a question first.")
+    if len(question) > 2000:
+        raise ValueError("Questions must be 2,000 characters or fewer.")
+
+    document, passages = search_reviewer_passages(db, document_id, question)
+    sources = "\n\n".join(
+        f"[Passage {p.id}, page {p.page_number}]\n{p.content}" for p in passages
+    )
+    citations_data = [
+        {
+            "passage_id": p.id,
+            "page_number": p.page_number,
+            "excerpt": p.content[:280].strip(),
+        }
+        for p in passages
+    ]
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Answer the learner's question using only the supplied reviewer passages. "
+                "Use earlier conversation only to understand follow-up references, never as evidence. "
+                "If the passages do not contain the answer, say so clearly. Do not add outside facts. "
+                "Cite supporting passages inline using [Passage ID, p. page]."
+            ),
+        },
+    ]
+    for turn in (history or [])[-8:]:
+        if turn.get("role") in {"user", "assistant"} and turn.get("content"):
+            messages.append({"role": turn["role"], "content": turn["content"][:2000]})
+    messages.append({
+        "role": "user",
+        "content": f"Reviewer: {document.filename}\n\nQuestion: {question}\n\nPassages:\n{sources}",
+    })
+
+    payload = {
+        "model": DEFAULT_MODEL,
+        "messages": messages,
+        "stream": True,
+        "options": {"temperature": 0.2, "num_ctx": 4096},
+    }
+
+    full_answer_parts = []
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        async with client.stream("POST", f"{OLLAMA_BASE_URL}/api/chat", json=payload) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    delta = data.get("message", {}).get("content", "")
+                    if delta:
+                        full_answer_parts.append(delta)
+                        yield {"event": "chunk", "delta": delta}
+                    if data.get("done", False):
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+    full_answer = "".join(full_answer_parts).strip()
+    yield {
+        "event": "done",
+        "answer": full_answer,
+        "citations": citations_data,
+    }

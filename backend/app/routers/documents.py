@@ -60,9 +60,9 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 def _process_uploaded_document(document_id: int, file_path: str, filename: str) -> None:
-    from ..database import SessionLocal
+    from ..database import get_db_session
 
-    db = SessionLocal()
+    db = get_db_session()
     try:
         doc = db.query(Document).filter(Document.id == document_id).first()
         if not doc:

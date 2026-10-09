@@ -34,9 +34,10 @@ interface WorkspaceProps {
   user?: UserProfile | null;
   onLogout?: () => void;
   onUserUpdated?: (user: UserProfile) => void;
+  isOffline?: boolean;
 }
 
-export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpdated }) => {
+export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpdated, isOffline = false }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('conext.theme');
     return saved === 'dark' ? 'dark' : 'light';
@@ -518,6 +519,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         modifierLabel={modifierLabel}
         user={user}
         onLogout={onLogout}
+        isOffline={isOffline}
       />
 
       {/* Center Main Workspace */}

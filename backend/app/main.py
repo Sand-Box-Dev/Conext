@@ -1,11 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
-from .database import engine, Base
+from .database import engine, offline_engine, Base
 from .routers import health, documents, concepts, chat, projects, auth, memories, study
 
 # Ensure database tables exist in Supabase Postgres or SQLite
 Base.metadata.create_all(bind=engine)
+# Also ensure the offline data SQLite has the same schema
+Base.metadata.create_all(bind=offline_engine)
+
+# Trigger initial sync from Supabase to SQLite in background if reachable
+try:
+    from .services.sync_service import sync_user_data_to_offline
+    import threading
+    threading.Thread(target=sync_user_data_to_offline, daemon=True).start()
+except Exception:
+    pass
 
 # Add the optional folder reference to existing SQLite databases.
 document_columns = {column["name"] for column in inspect(engine).get_columns("documents")}

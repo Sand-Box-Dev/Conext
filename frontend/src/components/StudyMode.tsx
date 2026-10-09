@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, ArrowUp, Check, ChevronLeft, ChevronRight, FileText, LoaderCircle, MessageCircle, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowUp, Check, ChevronLeft, ChevronRight, FileText, LoaderCircle, MessageCircle, MoreHorizontal, Plus, Search, Trash2, HelpCircle, Layers, PenTool } from 'lucide-react';
 import { api } from '../services/api';
 import { TrashConfirmDialog } from './TrashConfirmDialog';
 import type { DocumentItem, EssayGrade, FlashcardItem, QuizItem, StudyCitation, StudyExam, StudyMode as StudyModeType } from '../types';
@@ -15,6 +15,11 @@ interface StudyModeProps {
 }
 
 const modeLabels: Record<StudyModeType, string> = { quiz: 'Quiz', flashcards: 'Flash-Card', essay: 'Essay' };
+const modeIcons: Record<StudyModeType, React.ElementType> = {
+  quiz: HelpCircle,
+  flashcards: Layers,
+  essay: PenTool,
+};
 const citationText = (citations: StudyCitation[]) => citations.map(({ page_number }) => `p. ${page_number}`).filter((page, index, pages) => pages.indexOf(page) === index).join(' · ');
 
 export const StudyMode: React.FC<StudyModeProps> = ({ mode, documents, onReviewerSelected, onGoToRecent, onBackToChat, generateForDocumentId, onGenerationRequestHandled }) => {
@@ -157,7 +162,14 @@ export const StudyMode: React.FC<StudyModeProps> = ({ mode, documents, onReviewe
       <header className={`mb-8 flex flex-wrap items-center justify-between gap-4 border-b pb-6 ${isEssayEditor ? 'border-slate-200' : 'border-slate-800'}`}>
         <div className="flex items-center gap-3">
           {activeExam && <button type="button" className={`btn btn-ghost btn-sm btn-square ${isEssayEditor ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-400'}`} onClick={() => setActiveExam(null)} aria-label="Back to saved exams"><ArrowLeft className="h-4 w-4" /></button>}
-          <div><p className={`text-xs ${isEssayEditor ? 'text-slate-600' : 'text-slate-500'}`}>Study library</p><h1 className={`mt-0.5 text-2xl font-semibold ${isEssayEditor ? 'text-slate-950' : 'text-slate-100'}`}>{activeExam?.title ?? modeLabels[mode]}</h1>{activeExam && <p className={`mt-1 text-xs ${isEssayEditor ? 'text-slate-600' : 'text-slate-500'}`}>{activeExam.document_filename}</p>}</div>
+          <div>
+            <p className={`text-xs ${isEssayEditor ? 'text-slate-600' : 'text-slate-500'}`}>Study library</p>
+            <h1 className={`mt-0.5 flex items-center gap-2 text-2xl font-semibold ${isEssayEditor ? 'text-slate-950' : 'text-slate-100'}`}>
+              {React.createElement(modeIcons[mode], { className: "h-6 w-6 text-primary shrink-0" })}
+              <span>{activeExam?.title ?? modeLabels[mode]}</span>
+            </h1>
+            {activeExam && <p className={`mt-1 text-xs ${isEssayEditor ? 'text-slate-600' : 'text-slate-500'}`}>{activeExam.document_filename}</p>}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {activeExam ? <><button type="button" className={`btn btn-ghost btn-sm btn-square ${isEssayEditor ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-400 hover:text-white'}`} title="Delete saved set" aria-label="Delete saved set" onClick={() => { setError(null); setPendingDelete(activeExam); }}><Trash2 className="h-4 w-4" /></button><button type="button" className={`btn btn-ghost btn-sm gap-2 ${isEssayEditor ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300'}`} onClick={onBackToChat}><MessageCircle className="h-4 w-4" /><span className="hidden sm:inline">Conversation</span></button></> : <button type="button" className="btn btn-sm gap-2 border-white bg-white text-slate-950 hover:border-slate-200 hover:bg-slate-200" onClick={startGeneration}><Plus className="h-4 w-4" />Generate {modeLabels[mode]}</button>}
@@ -185,7 +197,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({ mode, documents, onReviewe
           <details className="dropdown dropdown-end absolute bottom-3 right-3 z-20"><summary aria-label={`Actions for ${exam.title}`} className="btn btn-ghost btn-xs btn-square list-none text-slate-400 hover:bg-slate-800 hover:text-white"><MoreHorizontal className="h-4 w-4" /></summary><ul className="menu dropdown-content mt-1 w-40 rounded-xl border border-slate-700 bg-slate-950 p-1 text-slate-200 shadow-xl"><li><button type="button" className="text-slate-300 hover:bg-slate-800 hover:text-white" onClick={() => { setError(null); setPendingDelete(exam); }}><Trash2 className="h-4 w-4" />Delete set</button></li></ul></details>
         </article>)}
       </div> : <div className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-800 px-6 py-12 text-center">
-        <h2 className="text-lg font-medium text-slate-200">No saved {modeLabels[mode].toLowerCase()}s yet</h2>
+        <h2 className="text-lg font-medium text-slate-200">No saved {modeLabels[mode].toLowerCase()}zes yet</h2>
         <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">Generate one from a reviewer. It will stay here so you can come back to it later.</p>
         {!documents.length && <button type="button" className="btn btn-ghost btn-sm mt-4 text-slate-300" onClick={onGoToRecent}>Add a reviewer first</button>}
       </div>}

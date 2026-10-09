@@ -3,7 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { ArrowUp, LoaderCircle } from 'lucide-react';
+import { ArrowUp, LoaderCircle, BookOpen, HelpCircle, Layers, PenTool } from 'lucide-react';
 import { api } from '../services/api';
 import type { ReviewerCitation, StudyMode } from '../types';
 
@@ -61,24 +61,115 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSending]);
 
+  const queuedTokensRef = useRef<string>('');
+  const displayedTextRef = useRef<string>('');
+  const isStreamActiveRef = useRef<boolean>(false);
+  const streamTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Stop typewriter timer on unmount
+  useEffect(() => {
+    return () => {
+      if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+    };
+  }, []);
+
   const sendQuestion = async (event: React.FormEvent) => {
     event.preventDefault();
     const asked = question.trim();
     if (!asked || isSending) return;
     setQuestion('');
     setError(null);
-    setMessages((current) => [...current, { role: 'user', content: asked }]);
+
+    // Clear streaming buffer refs
+    queuedTokensRef.current = '';
+    displayedTextRef.current = '';
+    isStreamActiveRef.current = true;
+    if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+
+    // Add user question and initial empty assistant placeholder
+    setMessages((current) => [
+      ...current,
+      { role: 'user', content: asked },
+      { role: 'assistant', content: '', citations: [] },
+    ]);
     setIsSending(true);
+
+    let citationsHolder: ReviewerCitation[] = [];
+
+    // Setup smooth word-by-word release timer
+    streamTimerRef.current = setInterval(() => {
+      const remaining = queuedTokensRef.current.slice(displayedTextRef.current.length);
+      if (remaining.length > 0) {
+        const nextSpaceIdx = remaining.indexOf(' ');
+        let stepLen = 1;
+        if (nextSpaceIdx !== -1 && nextSpaceIdx < 12) {
+          stepLen = nextSpaceIdx + 1;
+        } else {
+          stepLen = Math.min(3, remaining.length);
+        }
+        displayedTextRef.current += remaining.slice(0, stepLen);
+        const currentText = displayedTextRef.current;
+
+        setMessages((current) => {
+          if (current.length === 0) return current;
+          const updated = [...current];
+          const lastIdx = updated.length - 1;
+          if (updated[lastIdx].role === 'assistant') {
+            updated[lastIdx] = {
+              ...updated[lastIdx],
+              content: currentText,
+            };
+          }
+          return updated;
+        });
+      } else if (!isStreamActiveRef.current) {
+        // Stream completed and buffer fully flushed: reveal citations now!
+        if (streamTimerRef.current) {
+          clearInterval(streamTimerRef.current);
+          streamTimerRef.current = null;
+        }
+        setMessages((current) => {
+          if (current.length === 0) return current;
+          const updated = [...current];
+          const lastIdx = updated.length - 1;
+          if (updated[lastIdx].role === 'assistant') {
+            updated[lastIdx] = {
+              ...updated[lastIdx],
+              content: queuedTokensRef.current || displayedTextRef.current,
+              citations: citationsHolder,
+            };
+          }
+          return updated;
+        });
+        setIsSending(false);
+      }
+    }, 25);
+
     try {
-      const result = await api.askReviewer(documentId, asked);
-      setMessages((current) => [...current, {
-        role: 'assistant',
-        content: result.answer,
-        citations: result.citations,
-      }]);
+      await api.askReviewerStream(documentId, asked, {
+        onChunk: (delta) => {
+          queuedTokensRef.current += delta;
+        },
+        onDone: (result) => {
+          isStreamActiveRef.current = false;
+          queuedTokensRef.current = result.answer;
+          citationsHolder = result.citations || [];
+        },
+        onError: (streamErr) => {
+          isStreamActiveRef.current = false;
+          setError(streamErr.message || 'Stream encountered an error.');
+          setIsSending(false);
+        },
+      });
     } catch (err) {
+      isStreamActiveRef.current = false;
       setError(err instanceof Error ? err.message : 'Could not answer that question.');
-    } finally {
+      setMessages((current) => {
+        if (current.length > 0 && current[current.length - 1].role === 'assistant' && !current[current.length - 1].content) {
+          return current.slice(0, -1);
+        }
+        return current;
+      });
       setIsSending(false);
     }
   };
@@ -130,9 +221,18 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
             </div>
             {error && <div role="alert" className="alert alert-error mt-3 py-2 text-xs">{error}</div>}
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => onOpenStudyMode('quiz', documentId)}>Generate Quiz</button>
-              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => onOpenStudyMode('flashcards', documentId)}>Generate Flash-Card</button>
-              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800" onClick={() => onOpenStudyMode('essay', documentId)}>Generate Essay</button>
+              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800 gap-1.5" onClick={() => onOpenStudyMode('quiz', documentId)}>
+                <HelpCircle className="h-3.5 w-3.5 text-primary" />
+                <span>Generate Quiz</span>
+              </button>
+              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800 gap-1.5" onClick={() => onOpenStudyMode('flashcards', documentId)}>
+                <Layers className="h-3.5 w-3.5 text-primary" />
+                <span>Generate Flash-Card</span>
+              </button>
+              <button type="button" className="btn btn-sm rounded-full border-slate-700 bg-slate-900/70 text-xs font-normal text-slate-300 hover:bg-slate-800 gap-1.5" onClick={() => onOpenStudyMode('essay', documentId)}>
+                <PenTool className="h-3.5 w-3.5 text-primary" />
+                <span>Generate Essay</span>
+              </button>
             </div>
           </div>
         ) : (
@@ -143,33 +243,53 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
                   <div className={`max-w-[90%] sm:max-w-[82%] ${message.role === 'user' ? 'user-question rounded-3xl bg-slate-800 px-5 py-3.5 text-slate-100' : 'text-slate-200'}`}>
                     {message.role === 'assistant' ? (
                       <div className="assistant-answer text-sm leading-7">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={answerMarkdownComponents}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
+                        {message.content ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={answerMarkdownComponents}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                        ) : (
+                          <div className="flex items-center gap-2 text-slate-400">
+                            <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
+                            <span>Formulating response from reviewer...</span>
+                          </div>
+                        )}
+                        {isSending && index === messages.length - 1 && message.content && (
+                          <span className="inline-block h-4 w-1.5 ml-1 bg-primary animate-pulse align-middle" />
+                        )}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap text-sm leading-7">{message.content}</div>
                     )}
                     {message.citations && message.citations.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        {message.citations.map((citation) => (
-                      <details key={citation.passage_id} className="answer-citation collapse collapse-arrow rounded-xl border border-slate-800 bg-slate-950/70">
-                            <summary className="collapse-title min-h-0 py-2 text-[11px] font-medium text-primary">
-                              Passage {citation.passage_id} · Page {citation.page_number}
-                            </summary>
-                            <div className="collapse-content text-xs leading-relaxed text-slate-300">{citation.excerpt}</div>
-                          </details>
-                        ))}
+                      <div className="mt-5 border-t border-slate-700/60 pt-3">
+                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                          <BookOpen className="h-3.5 w-3.5 text-primary" />
+                          <span>Sources & Referenced Passages ({message.citations.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {message.citations.map((citation) => (
+                            <details
+                              key={citation.passage_id}
+                              className="answer-citation collapse collapse-arrow rounded-xl border border-slate-800 bg-slate-900/80 transition-colors hover:border-slate-700 cursor-pointer"
+                            >
+                              <summary className="collapse-title min-h-0 py-2.5 px-3.5 text-xs font-medium text-primary select-none flex items-center justify-between">
+                                <span>Passage {citation.passage_id} · Page {citation.page_number}</span>
+                              </summary>
+                              <div className="collapse-content px-3.5 pb-3 text-xs leading-relaxed text-slate-300 border-t border-slate-800/60 pt-2">
+                                <p className="italic text-slate-400">"{citation.excerpt}"</p>
+                              </div>
+                            </details>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               ))}
-              {isSending && <div className="flex items-center gap-2 text-sm text-slate-400"><LoaderCircle className="h-4 w-4 animate-spin" />Searching reviewer passages…</div>}
               <div ref={endRef} />
             </div>
             {error && <div role="alert" className="alert alert-error mb-3 py-2 text-xs">{error}</div>}

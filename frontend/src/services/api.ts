@@ -4,6 +4,7 @@ import type {
   ConceptMapData,
   ConceptDetail,
   ReviewerAnswer,
+  ReviewerCitation,
   EssayGrade,
   StudyExam,
   StudyMode,
@@ -18,6 +19,7 @@ const API_BASE = 'http://127.0.0.1:8000/api';
 
 const TOKEN_KEY = 'conext_auth_token';
 const USER_KEY = 'conext_auth_user';
+const OFFLINE_KEY = 'conext_offline_mode';
 
 export const authStorage = {
   getToken(): string | null {
@@ -38,9 +40,16 @@ export const authStorage = {
   setUser(user: UserProfile) {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
+  isOffline(): boolean {
+    return localStorage.getItem(OFFLINE_KEY) === 'true';
+  },
+  setOffline(offline: boolean) {
+    localStorage.setItem(OFFLINE_KEY, offline ? 'true' : 'false');
+  },
   clear() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(OFFLINE_KEY);
   },
 };
 
@@ -70,6 +79,7 @@ export const api = {
     if (data.access_token) {
       authStorage.setToken(data.access_token);
       authStorage.setUser(data.user);
+      authStorage.setOffline(data.offline ?? false);
     }
     return data;
   },
@@ -89,6 +99,7 @@ export const api = {
     if (data.access_token) {
       authStorage.setToken(data.access_token);
       authStorage.setUser(data.user);
+      authStorage.setOffline(data.offline ?? false);
     }
     return data;
   },
@@ -116,6 +127,16 @@ export const api = {
 
   logout() {
     authStorage.clear();
+  },
+
+  async getAuthStatus(): Promise<{ database_online: boolean; supabase_reachable: boolean; mode: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/auth/status`);
+      if (!res.ok) return { database_online: false, supabase_reachable: false, mode: 'offline' };
+      return res.json();
+    } catch {
+      return { database_online: false, supabase_reachable: false, mode: 'offline' };
+    }
   },
 
   // Health check
@@ -252,13 +273,6 @@ export const api = {
     return res.json();
   },
 
-  async getDocument(id: number): Promise<DocumentItem> {
-    const res = await fetch(`${API_BASE}/documents/${id}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to fetch document');
-    return res.json();
-  },
 
   async getOriginalDocumentFile(id: number): Promise<Blob> {
     const res = await fetch(`${API_BASE}/documents/${id}/file`, {
@@ -329,6 +343,91 @@ export const api = {
       throw new Error(err.detail || 'Could not answer that question');
     }
     return res.json();
+  },
+
+  async askReviewerStream(
+    documentId: number,
+    question: string,
+    callbacks: {
+      onCitations?: (citations: ReviewerCitation[]) => void;
+      onChunk?: (delta: string) => void;
+      onDone?: (result: ReviewerAnswer) => void;
+      onError?: (error: Error) => void;
+    }
+  ): Promise<void> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ question }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not connect to chat stream' }));
+      throw new Error(err.detail || 'Could not connect to chat stream');
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error('No readable stream available in response.');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulatedAnswer = '';
+    let citations: ReviewerCitation[] = [];
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            currentEvent = '';
+            continue;
+          }
+
+          if (trimmed.startsWith('event:')) {
+            currentEvent = trimmed.replace('event:', '').trim();
+          } else if (trimmed.startsWith('data:')) {
+            const rawData = trimmed.replace('data:', '').trim();
+            try {
+              const data = JSON.parse(rawData);
+              if (currentEvent === 'citations') {
+                citations = data as ReviewerCitation[];
+                callbacks.onCitations?.(citations);
+              } else if (currentEvent === 'chunk') {
+                const delta = data.delta || '';
+                accumulatedAnswer += delta;
+                callbacks.onChunk?.(delta);
+              } else if (currentEvent === 'done') {
+                callbacks.onDone?.({
+                  message_id: data.message_id || 0,
+                  answer: data.answer || accumulatedAnswer,
+                  citations: data.citations || citations,
+                });
+              } else if (currentEvent === 'error') {
+                callbacks.onError?.(new Error(data.detail || 'Error during streaming'));
+              }
+            } catch {
+              // Ignore partial or unparseable JSON frames
+            }
+          }
+        }
+      }
+    } catch (streamErr) {
+      callbacks.onError?.(streamErr instanceof Error ? streamErr : new Error(String(streamErr)));
+      throw streamErr;
+    }
   },
 
   async generateQuiz(documentId: number): Promise<StudyExam> {
