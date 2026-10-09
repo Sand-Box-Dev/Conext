@@ -2,14 +2,34 @@ import os
 import shutil
 from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Document, SourceChunk, ConceptMap
+from ..models import Document, SourceChunk, ConceptMap, ProjectFolder
 from ..schemas import DocumentResponse, ConceptMapResponse
 from ..services.document_service import process_and_store_document
 from ..services.concept_service import extract_and_persist_concept_map, serialize_concept_map
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+class ProjectAssignment(BaseModel):
+    project_id: int | None
+
+
+@router.patch("/{document_id}/project")
+def assign_project(document_id: int, request: ProjectAssignment, db: Session = Depends(get_db)):
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Reviewer not found")
+    if request.project_id is not None:
+        project = db.query(ProjectFolder).filter(ProjectFolder.id == request.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project folder not found")
+
+    document.project_id = request.project_id
+    db.commit()
+    return {"document_id": document.id, "project_id": document.project_id}
 
 UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -29,7 +49,8 @@ def list_documents(db: Session = Depends(get_db)):
             uploaded_at=d.uploaded_at,
             processing_status=d.processing_status,
             chunk_count=chunk_count,
-            has_map=has_map
+            has_map=has_map,
+            project_id=d.project_id,
         ))
     return results
 
@@ -114,7 +135,8 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
         uploaded_at=doc.uploaded_at,
         processing_status=doc.processing_status,
         chunk_count=chunk_count,
-        has_map=has_map
+        has_map=has_map,
+        project_id=doc.project_id,
     )
 
 @router.post("/{document_id}/generate", response_model=ConceptMapResponse)

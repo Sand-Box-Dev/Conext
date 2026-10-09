@@ -14,9 +14,13 @@
     "@types/dagre": "^0.7.54",
     "@xyflow/react": "^12.12.0",
     "dagre": "^0.8.5",
+    "katex": "^0.19.0",
     "lucide-react": "^1.54.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
@@ -24,6 +28,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "daisyui": "^5.7.47",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"

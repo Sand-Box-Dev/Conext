@@ -12,6 +12,14 @@ export interface DocumentItem {
   processing_status: 'ready' | 'processing' | 'completed' | 'error';
   chunk_count: number;
   has_map: boolean;
+  project_id: number | null;
+}
+
+export interface ProjectFolder {
+  id: number;
+  name: string;
+  created_at: string;
+  document_count: number;
 }
 
 export interface ConceptNodeData extends Record<string, unknown> {
@@ -53,6 +61,26 @@ export interface ConceptDetail {
   id: number;
   label: string;
   explanation: string;
+  has_generated_explanation: boolean;
   node_type: string;
   sources: SourceChunkItem[];
+}
+
+export interface ReviewerCitation {
+  passage_id: number;
+  page_number: number;
+  excerpt: string;
+}
+
+export interface ReviewerAnswer {
+  message_id: number;
+  answer: string;
+  citations: ReviewerCitation[];
+}
+
+export interface SavedReviewerMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  citations: ReviewerCitation[];
 }

@@ -106,7 +106,16 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
     const { layoutedNodes, layoutedEdges } = getLayoutedElements(rawNodes, rawEdges);
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [nodesData, edgesData, selectedNodeId, setNodes, setEdges]);
+  }, [nodesData, edgesData, setNodes, setEdges]);
+
+  // Selection only changes the node highlight. Keep the current positions so
+  // clicking or dragging nodes never reruns Dagre and snaps the graph back.
+  useEffect(() => {
+    setNodes((currentNodes) => currentNodes.map((node) => ({
+      ...node,
+      selected: Number(node.id) === selectedNodeId,
+    })));
+  }, [selectedNodeId, setNodes]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -124,6 +133,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
+        nodesDraggable
         fitView
         minZoom={0.2}
         maxZoom={2}

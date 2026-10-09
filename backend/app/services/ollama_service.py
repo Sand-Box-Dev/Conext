@@ -54,7 +54,7 @@ async def generate_concept_map_from_passages(
         "STRICT GROUNDING RULES:\n"
         "1. Every concept must include at least one valid supporting passage ID from the provided text in 'source_passage_ids'.\n"
         "2. Do NOT introduce external knowledge, facts, or entities not explicitly present in the source passages.\n"
-        "3. Provide a clear, beginner-friendly explanation strictly grounded in the document for each concept.\n"
+        "3. Provide a non-empty, clear, beginner-friendly explanation of 2 to 4 sentences for every concept, strictly grounded in the document.\n"
         "4. Assign node_type as 'root' for the overarching main topic, 'concept' for key core concepts, and 'subconcept' for supporting details.\n"
         "5. Extract 5 to 12 meaningful concepts.\n"
         "6. In 'relationships', describe valid connections between concepts (e.g. 'source_label', 'target_label', 'relationship'). Both source and target must be exact concept labels.\n"
@@ -114,3 +114,48 @@ async def generate_concept_map_from_passages(
                 strict_retry=True
             )
         raise
+
+
+async def generate_concept_explanation(
+    concept_label: str,
+    doc_title: str,
+    passages: list[tuple[int, int, str]],
+    model_name: str = DEFAULT_MODEL,
+) -> str:
+    """Write a concise concept explanation grounded in its linked passages."""
+    source_text = "\n\n".join(
+        f"[Passage {passage_id}, page {page_number}]\n{content}"
+        for passage_id, page_number, content in passages
+    )
+    payload = {
+        "model": model_name,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a patient tutor. Explain the named concept in 2 to 4 clear, "
+                    "beginner-friendly sentences using only the supplied reviewer passages. "
+                    "Explain what it means and how it works when the source supports that. "
+                    "Do not add outside facts or guess. Cite supporting ideas with the given "
+                    "page markers, such as [p. 2]. If the passages do not explain the concept, "
+                    "say what information is missing. Return only the explanation."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Reviewer: {doc_title}\nConcept: {concept_label}\n\n"
+                    f"Linked reviewer passages:\n{source_text}"
+                ),
+            },
+        ],
+        "stream": False,
+        "options": {"temperature": 0.2, "num_ctx": 4096},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(f"{OLLAMA_BASE_URL}/api/chat", json=payload)
+        response.raise_for_status()
+    explanation = response.json().get("message", {}).get("content", "").strip()
+    if not explanation:
+        raise RuntimeError("The local model returned an empty explanation.")
+    return explanation

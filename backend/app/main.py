@@ -1,10 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 from .database import engine, Base
-from .routers import health, documents, concepts
+from .routers import health, documents, concepts, chat, projects
 
 # Ensure database tables exist
 Base.metadata.create_all(bind=engine)
+
+# Add the optional folder reference to existing SQLite databases.
+document_columns = {column["name"] for column in inspect(engine).get_columns("documents")}
+if "project_id" not in document_columns:
+    with engine.begin() as connection:
+        connection.execute(text(
+            "ALTER TABLE documents ADD COLUMN project_id INTEGER "
+            "REFERENCES project_folders(id)"
+        ))
 
 app = FastAPI(
     title="Conext - Offline AI Concept Mapping API",
@@ -34,6 +44,8 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(documents.router)
 app.include_router(concepts.router)
+app.include_router(chat.router)
+app.include_router(projects.router)
 
 @app.get("/")
 def root():

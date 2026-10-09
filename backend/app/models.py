@@ -3,6 +3,16 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Inde
 from sqlalchemy.orm import relationship
 from .database import Base
 
+
+class ProjectFolder(Base):
+    __tablename__ = "project_folders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(80), nullable=False, unique=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    documents = relationship("Document", back_populates="project_folder")
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -11,10 +21,12 @@ class Document(Base):
     file_path = Column(String(500), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
     processing_status = Column(String(50), default="ready")  # ready, processing, completed, error
+    project_id = Column(Integer, ForeignKey("project_folders.id"), nullable=True)
 
     # Relationships
     chunks = relationship("SourceChunk", back_populates="document", cascade="all, delete-orphan")
     concept_map = relationship("ConceptMap", back_populates="document", uselist=False, cascade="all, delete-orphan")
+    project_folder = relationship("ProjectFolder", back_populates="documents")
 
 
 class SourceChunk(Base):
@@ -30,6 +42,17 @@ class SourceChunk(Base):
     # Relationships
     document = relationship("Document", back_populates="chunks")
     node_associations = relationship("NodeSource", back_populates="source_chunk", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    citations = Column(Text, nullable=True)  # JSON-serialized reviewer citations
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
 
 class ConceptMap(Base):

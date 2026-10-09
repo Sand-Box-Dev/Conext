@@ -54,6 +54,7 @@ class ConceptDetailResponse(BaseModel):
     id: int
     label: str
     explanation: str
+    has_generated_explanation: bool = True
     node_type: str
     sources: List[SourceChunkResponse]
 
@@ -67,6 +68,7 @@ class DocumentResponse(BaseModel):
     processing_status: str
     chunk_count: int = 0
     has_map: bool = False
+    project_id: Optional[int] = None
 
 # Ollama LLM Extraction Schemas (Structured JSON)
 class RawConcept(BaseModel):
