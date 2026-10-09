@@ -56,7 +56,7 @@ function App() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs text-slate-400 font-medium tracking-wide">
-            Connecting to Conext workspace...
+            Connecting to Notepad AI...
           </span>
         </div>
       </div>

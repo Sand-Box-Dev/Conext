@@ -131,6 +131,14 @@ export const api = {
     return res.json();
   },
 
+  async getDocument(documentId: number): Promise<DocumentItem> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to refresh reviewer status');
+    return res.json();
+  },
+
   async getTrashedDocuments(): Promise<DocumentItem[]> {
     const res = await fetch(`${API_BASE}/documents/trash`, {
       headers: getAuthHeaders(),
@@ -191,6 +199,27 @@ export const api = {
     return res.json();
   },
 
+  async renameProject(projectId: number, name: string): Promise<ProjectFolder> {
+    const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not rename folder' }));
+      throw new Error(err.detail || 'Could not rename folder');
+    }
+    return res.json();
+  },
+
+  async deleteProject(projectId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/projects/${projectId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not delete folder' }));
+      throw new Error(err.detail || 'Could not delete folder');
+    }
+  },
+
   async assignProject(documentId: number, projectId: number | null): Promise<void> {
     const res = await fetch(`${API_BASE}/documents/${documentId}/project`, {
       method: 'PATCH',
@@ -226,6 +255,17 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to fetch document');
     return res.json();
+  },
+
+  async getOriginalDocumentFile(id: number): Promise<Blob> {
+    const res = await fetch(`${API_BASE}/documents/${id}/file`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not load the original file.' }));
+      throw new Error(err.detail || 'Could not load the original file.');
+    }
+    return res.blob();
   },
 
   async generateConceptMap(documentId: number): Promise<ConceptMapData> {

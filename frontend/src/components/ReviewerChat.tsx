@@ -3,7 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { ArrowUp, BookOpenText, LoaderCircle } from 'lucide-react';
+import { ArrowUp, LoaderCircle } from 'lucide-react';
 import { api } from '../services/api';
 import type { ReviewerCitation } from '../types';
 
@@ -16,6 +16,8 @@ interface Message {
 interface ReviewerChatProps {
   documentId: number;
   filename: string;
+  isProcessing?: boolean;
+  hasProcessingError?: boolean;
 }
 
 const answerMarkdownComponents: Components = {
@@ -30,7 +32,7 @@ const answerMarkdownComponents: Components = {
   blockquote: ({ children }) => <blockquote className="my-3 border-l-2 border-slate-600 pl-3 text-slate-300">{children}</blockquote>,
 };
 
-export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename }) => {
+export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename, isProcessing = false, hasProcessingError = false }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -89,15 +91,27 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
           <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
             <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />Loading saved conversation…
           </div>
+        ) : messages.length === 0 && isProcessing ? (
+          <div className="flex flex-1 flex-col items-center justify-center pb-20 text-center">
+            <h2 className="chat-greeting text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">
+              Getting your reviewer ready.
+            </h2>
+            <p role="status" className="mt-4 flex items-center gap-2 text-sm text-slate-400">
+              <LoaderCircle className="h-4 w-4 animate-spin" />Preparing {filename} for conversation…
+            </p>
+          </div>
+        ) : messages.length === 0 && hasProcessingError ? (
+          <div className="flex flex-1 flex-col items-center justify-center pb-20 text-center">
+            <h2 className="chat-greeting text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">We couldn’t prepare this reviewer.</h2>
+            <p role="alert" className="mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
+              Check that the file contains readable text, then upload it again to start a conversation.
+            </p>
+          </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center pb-20 text-center">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-200">
-              <BookOpenText className="h-6 w-6" />
-            </div>
-            <h2 className="chat-greeting text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">Where should we begin?</h2>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
-              Ask anything about <span className="text-slate-200">{filename}</span>. Answers are grounded in the reviewer and include page citations.
-            </p>
+            <h2 className="chat-greeting text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">
+              Where should we begin?
+            </h2>
             <div className="chat-composer mt-7 w-full rounded-3xl border border-slate-700 bg-slate-900 shadow-lg transition focus-within:border-slate-500">
               <form onSubmit={sendQuestion} className="flex items-center gap-3 px-4 py-3">
                 <input

@@ -1,6 +1,6 @@
-# Conext
+# Notepad AI
 
-**Conext** is an offline, AI-powered interactive concept mapping and educational document comprehension workspace. It extracts key concepts and directional relationships from textbooks, research papers, and lecture materials completely locally, visualizes them in an interactive graph, and provides verifiable evidence grounding for every concept.
+**Notepad AI** is an offline, AI-powered interactive concept mapping and educational document comprehension workspace. It extracts key concepts and directional relationships from textbooks, research papers, and lecture materials completely locally, visualizes them in an interactive graph, and provides verifiable evidence grounding for every concept.
 
 ---
 
@@ -17,7 +17,7 @@
 ## Architecture Overview
 
 ```
-Conext/
+Notepad AI/
 ├── backend/                  # FastAPI Backend Service
 │   ├── app/
 │   │   ├── routers/          # API endpoints (health, documents, concepts)

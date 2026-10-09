@@ -1,4 +1,4 @@
-"""Local stdio MCP server exposing read-only Conext reviewer tools."""
+"""Local stdio MCP server exposing read-only Notepad AI reviewer tools."""
 
 from mcp.server.fastmcp import FastMCP
 
@@ -6,12 +6,12 @@ from .database import SessionLocal
 from .models import Document
 from .services.chat_service import ask_reviewer as answer_reviewer, search_reviewer_passages
 
-mcp = FastMCP("Conext Reviewer")
+mcp = FastMCP("Notepad AI Reviewer")
 
 
 @mcp.tool()
 def list_reviewers() -> list[dict]:
-    """List uploaded reviewers and their IDs for use with other Conext tools."""
+    """List uploaded reviewers and their IDs for use with other Notepad AI tools."""
     with SessionLocal() as db:
         documents = db.query(Document).order_by(Document.uploaded_at.desc()).all()
         return [

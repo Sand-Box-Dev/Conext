@@ -92,7 +92,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            Conext
+            Notepad AI
             <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20">
               AI Map
             </span>
@@ -163,7 +163,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="developer@conext.ai"
+                placeholder="you@example.com"
                 className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
               />
             </div>

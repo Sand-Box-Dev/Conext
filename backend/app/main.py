@@ -22,7 +22,7 @@ if "is_trashed" not in document_columns:
         ))
 
 app = FastAPI(
-    title="Conext - AI Concept Mapping & Knowledge API",
+    title="Notepad AI - Reviewer API",
     description="Offline-grounded AI concept mapping with Supabase Auth, PostgreSQL storage, and persistent AI memories",
     version="1.1.0"
 )
@@ -57,7 +57,7 @@ app.include_router(memories.router)
 @app.get("/")
 def root():
     return {
-        "message": "Conext AI Concept Mapping API (Powered by Supabase & Ollama)",
+        "message": "Notepad AI Reviewer API",
         "docs": "/docs",
         "health": "/api/health"
     }

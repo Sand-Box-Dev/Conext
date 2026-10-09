@@ -58,7 +58,10 @@ def search_reviewer_passages(
 
 
 async def ask_reviewer(
-    db: Session, document_id: int, question: str, history: list[dict[str, str]] | None = None
+    db: Session,
+    document_id: int,
+    question: str,
+    history: list[dict[str, str]] | None = None,
 ) -> ReviewerAnswer:
     question = question.strip()
     if not question:

@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className={`flex h-full shrink-0 select-none flex-col justify-between border-r border-slate-800 bg-slate-900/90 backdrop-blur-xl transition-[width] duration-200 ${isCollapsed ? 'w-[4.5rem]' : 'w-80'}`}>
       <div className={`${isCollapsed ? 'p-3' : 'px-5 py-4'} border-b border-slate-800/80`}>
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-3' : 'justify-between gap-2.5'}`}>
-          <h1 className={`font-bold tracking-tight text-white ${isCollapsed ? 'text-[10px]' : 'text-lg'}`}>Conext</h1>
+          <h1 className={`font-bold tracking-tight text-white ${isCollapsed ? 'text-[10px]' : 'text-lg'}`}>Notepad AI</h1>
           <button onClick={() => setIsCollapsed((collapsed) => !collapsed)} className="btn btn-ghost btn-sm btn-square shrink-0 text-slate-400 hover:text-white" title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
             {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>

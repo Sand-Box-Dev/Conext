@@ -1,8 +1,12 @@
 import os
 import logging
+import mimetypes
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Response, status
+from urllib.parse import quote
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, HTTPException, Response, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Document, SourceChunk, ConceptMap, ProjectFolder, ChatMessage
@@ -54,6 +58,29 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
+
+def _process_uploaded_document(document_id: int, file_path: str, filename: str) -> None:
+    from ..database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            return
+        chunk_count = process_and_store_document(db, document_id, file_path, filename)
+        doc.processing_status = "ready"
+        db.commit()
+        logger.info("Processed reviewer %s with %s passages", document_id, chunk_count)
+    except Exception:
+        db.rollback()
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if doc:
+            doc.processing_status = "error"
+            db.commit()
+        logger.exception("Failed to process uploaded reviewer %s", document_id)
+    finally:
+        db.close()
+
 @router.get("", response_model=List[DocumentResponse])
 def list_documents(
     db: Session = Depends(get_db),
@@ -62,17 +89,27 @@ def list_documents(
     docs = _visible_document_query(db, user).filter(
         Document.is_trashed.is_(False)
     ).order_by(Document.uploaded_at.desc()).all()
+    document_ids = [document.id for document in docs]
+    chunk_counts = dict(
+        db.query(SourceChunk.document_id, func.count(SourceChunk.id))
+        .filter(SourceChunk.document_id.in_(document_ids))
+        .group_by(SourceChunk.document_id)
+        .all()
+    ) if document_ids else {}
+    mapped_document_ids = set(
+        db.query(ConceptMap.document_id)
+        .filter(ConceptMap.document_id.in_(document_ids))
+        .all()
+    ) if document_ids else set()
     results = []
     for d in docs:
-        chunk_count = db.query(SourceChunk).filter(SourceChunk.document_id == d.id).count()
-        has_map = db.query(ConceptMap).filter(ConceptMap.document_id == d.id).first() is not None
         results.append(DocumentResponse(
             id=d.id,
             filename=d.filename,
             uploaded_at=d.uploaded_at,
             processing_status=d.processing_status,
-            chunk_count=chunk_count,
-            has_map=has_map,
+            chunk_count=chunk_counts.get(d.id, 0),
+            has_map=(d.id,) in mapped_document_ids,
             project_id=d.project_id,
             user_id=d.user_id
         ))
@@ -87,14 +124,26 @@ def list_trashed_documents(
     docs = _visible_document_query(db, user).filter(
         Document.is_trashed.is_(True)
     ).order_by(Document.uploaded_at.desc()).all()
+    document_ids = [document.id for document in docs]
+    chunk_counts = dict(
+        db.query(SourceChunk.document_id, func.count(SourceChunk.id))
+        .filter(SourceChunk.document_id.in_(document_ids))
+        .group_by(SourceChunk.document_id)
+        .all()
+    ) if document_ids else {}
+    mapped_document_ids = set(
+        db.query(ConceptMap.document_id)
+        .filter(ConceptMap.document_id.in_(document_ids))
+        .all()
+    ) if document_ids else set()
     return [
         DocumentResponse(
             id=document.id,
             filename=document.filename,
             uploaded_at=document.uploaded_at,
             processing_status=document.processing_status,
-            chunk_count=db.query(SourceChunk).filter(SourceChunk.document_id == document.id).count(),
-            has_map=db.query(ConceptMap).filter(ConceptMap.document_id == document.id).first() is not None,
+            chunk_count=chunk_counts.get(document.id, 0),
+            has_map=(document.id,) in mapped_document_ids,
             project_id=document.project_id,
             user_id=document.user_id,
         )
@@ -150,6 +199,7 @@ def permanently_delete_document(
 
 @router.post("", response_model=DocumentResponse)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
@@ -200,33 +250,24 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    try:
-        chunk_count = process_and_store_document(db, doc.id, file_path, doc.filename)
-        doc.processing_status = "ready"
-        db.commit()
-        db.refresh(doc)
-        return DocumentResponse(
-            id=doc.id,
-            filename=doc.filename,
-            uploaded_at=doc.uploaded_at,
-            processing_status=doc.processing_status,
-            chunk_count=chunk_count,
-            has_map=False,
-            user_id=doc.user_id
-        )
-    except Exception as e:
-        doc.processing_status = "error"
-        db.commit()
-        raise HTTPException(
-            status_code=422,
-            detail=f"Failed to process document: {str(e)}"
-        )
+    background_tasks.add_task(_process_uploaded_document, doc.id, file_path, doc.filename)
+    return DocumentResponse(
+        id=doc.id,
+        filename=doc.filename,
+        uploaded_at=doc.uploaded_at,
+        processing_status=doc.processing_status,
+        chunk_count=0,
+        has_map=False,
+        user_id=doc.user_id
+    )
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-def get_document(document_id: int, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == document_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+def get_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+):
+    doc = _get_visible_document(document_id, db, user)
     
     chunk_count = db.query(SourceChunk).filter(SourceChunk.document_id == doc.id).count()
     has_map = db.query(ConceptMap).filter(ConceptMap.document_id == doc.id).first() is not None
@@ -239,6 +280,36 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
         has_map=has_map,
         project_id=doc.project_id,
         user_id=doc.user_id
+    )
+
+
+@router.get("/{document_id}/file")
+def get_document_file(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+):
+    document = _get_visible_document(document_id, db, user)
+    file_path = os.path.realpath(document.file_path)
+    try:
+        is_upload_file = os.path.commonpath([os.path.realpath(UPLOAD_DIR), file_path]) == os.path.realpath(UPLOAD_DIR)
+    except ValueError:
+        is_upload_file = False
+    if not is_upload_file or not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="The original file is no longer available.")
+
+    media_type = mimetypes.guess_type(document.filename)[0] or "application/octet-stream"
+    if media_type.startswith("text/"):
+        media_type = f"{media_type}; charset=utf-8"
+    disposition_name = quote(os.path.basename(document.filename), safe="")
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{disposition_name}",
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 @router.post("/{document_id}/generate", response_model=ConceptMapResponse)

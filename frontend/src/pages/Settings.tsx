@@ -83,7 +83,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, modifierLabel, onUserU
       </form>
 
       <section className="card border border-base-300 bg-base-200/70 shadow-sm"><div className="card-body gap-5">
-        <div className="flex items-center gap-3"><span className="rounded-xl bg-primary/10 p-2 text-primary"><Keyboard className="h-5 w-5" /></span><div><h3 className="font-semibold">Keyboard shortcuts</h3><p className="text-xs text-base-content/60">Use these to navigate Conext faster.</p></div></div>
+        <div className="flex items-center gap-3"><span className="rounded-xl bg-primary/10 p-2 text-primary"><Keyboard className="h-5 w-5" /></span><div><h3 className="font-semibold">Keyboard shortcuts</h3><p className="text-xs text-base-content/60">Use these to navigate Notepad AI faster.</p></div></div>
         <div className="grid gap-x-8 sm:grid-cols-2">{shortcuts.map(([label, key]) => <div key={label} className="flex items-center justify-between gap-4 border-b border-base-300/70 py-3 text-sm"><span className="text-base-content/75">{label}</span><kbd className="kbd kbd-sm">{key}</kbd></div>)}</div>
       </div></section>
     </div>

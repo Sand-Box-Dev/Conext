@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -32,15 +33,19 @@ class ProjectResponse(BaseModel):
 @router.get("", response_model=list[ProjectResponse])
 def list_projects(db: Session = Depends(get_db)):
     projects = db.query(ProjectFolder).order_by(ProjectFolder.created_at.desc()).all()
+    project_ids = [project.id for project in projects]
+    document_counts = dict(
+        db.query(Document.project_id, func.count(Document.id))
+        .filter(Document.project_id.in_(project_ids), Document.is_trashed.is_(False))
+        .group_by(Document.project_id)
+        .all()
+    ) if project_ids else {}
     return [
         ProjectResponse(
             id=project.id,
             name=project.name,
             created_at=project.created_at,
-            document_count=db.query(Document).filter(
-                Document.project_id == project.id,
-                Document.is_trashed.is_(False),
-            ).count(),
+            document_count=document_counts.get(project.id, 0),
         )
         for project in projects
     ]
@@ -62,3 +67,45 @@ def create_project(request: ProjectCreate, db: Session = Depends(get_db)):
         created_at=project.created_at,
         document_count=0,
     )
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+def rename_project(project_id: int, request: ProjectCreate, db: Session = Depends(get_db)):
+    project = db.query(ProjectFolder).filter(ProjectFolder.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project folder not found.")
+
+    existing = db.query(ProjectFolder).filter(
+        ProjectFolder.id != project_id,
+        func.lower(ProjectFolder.name) == request.name.lower(),
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="A folder with that name already exists.")
+
+    project.name = request.name
+    db.commit()
+    db.refresh(project)
+    document_count = db.query(Document).filter(
+        Document.project_id == project.id,
+        Document.is_trashed.is_(False),
+    ).count()
+    return ProjectResponse(
+        id=project.id,
+        name=project.name,
+        created_at=project.created_at,
+        document_count=document_count,
+    )
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(ProjectFolder).filter(ProjectFolder.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project folder not found.")
+
+    db.query(Document).filter(Document.project_id == project_id).update(
+        {Document.project_id: None}, synchronize_session=False
+    )
+    db.delete(project)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

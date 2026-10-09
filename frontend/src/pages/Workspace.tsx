@@ -7,6 +7,7 @@ import {
   MessageCircle,
   PanelRight,
   RefreshCw,
+  FileText,
 } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { ConceptMap } from '../components/ConceptMap';
@@ -17,6 +18,7 @@ import { Dashboard } from './Dashboard';
 import { Projects } from './Projects';
 import { Settings } from './Settings';
 import { Trash as TrashPage } from './Trash';
+import { OriginalFilePreview } from '../components/OriginalFilePreview';
 import { api } from '../services/api';
 import { removeReviewerCover } from '../services/coverStorage';
 import type {
@@ -62,6 +64,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [isOriginalPreviewOpen, setIsOriginalPreviewOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<'commands' | 'reviewers'>('commands');
   const [modifierLabel] = useState(() => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘' : 'Ctrl');
@@ -119,27 +122,31 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         localStorage.removeItem('conext.trashed-reviewers');
       }
 
+      const documentsRequest = docsToMigrate.length ? api.getDocuments().catch(() => []) : Promise.resolve(initialDocs);
+      const foldersRequest = docsToMigrate.length ? api.getProjects().catch(() => initialFolders) : Promise.resolve(initialFolders);
       const [docs, trashed, folders] = await Promise.all([
-        api.getDocuments().catch(() => []),
+        documentsRequest,
         api.getTrashedDocuments().catch(() => []),
-        Promise.resolve(initialFolders),
+        foldersRequest,
       ]);
       setDocuments(docs);
       setTrashedDocuments(trashed);
       setProjects(folders);
 
       // Auto-select first document if available and none selected
-      if (docs.length > 0 && selectedDocId === null) {
+      if (docs.length > 0 && selectedDocIdRef.current === null) {
         setSelectedDocId(docs[0].id);
       }
     } catch (e) {
       console.error(e);
     }
-  }, [selectedDocId]);
+  }, []);
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  const selectedDocProcessingStatus = documents.find((document) => document.id === selectedDocId)?.processing_status;
 
   // When selectedDocId changes, load existing map if available
   useEffect(() => {
@@ -154,6 +161,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
     setSelectedNodeId(null);
     setConceptDetail(null);
 
+    if (selectedDocProcessingStatus === 'processing') {
+      setConceptMap(null);
+      return;
+    }
+
     // Try fetching existing map
     api
       .getConceptMap(selectedDocId)
@@ -164,7 +176,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         // No map yet for this doc, normal state
         setConceptMap(null);
       });
-  }, [selectedDocId]);
+  }, [selectedDocId, selectedDocProcessingStatus]);
 
   const improveExplanation = useCallback(async (nodeId: number, isCurrent: () => boolean = () => true) => {
     setIsGeneratingExplanation(true);
@@ -226,12 +238,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
     try {
       const newDoc = await api.uploadDocument(file);
       setDocuments((prev) => [newDoc, ...prev]);
+      setConceptMap(null);
       setSelectedDocId(newDoc.id);
       setRecentDocumentIds((current) => [newDoc.id, ...current.filter((id) => id !== newDoc.id)]);
       setActiveView('workspace');
-      setIsChatOpen(false);
+      setIsChatOpen(true);
       setIsDetailsOpen(true);
-      void handleGenerateConceptMap(newDoc.id);
     } finally {
       setIsUploading(false);
     }
@@ -242,13 +254,48 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
     setProjects((current) => [project, ...current]);
   };
 
+  const handleRenameProject = async (projectId: number, name: string) => {
+    const project = await api.renameProject(projectId, name);
+    setProjects((current) => current.map((item) => item.id === projectId ? project : item));
+  };
+
+  const handleDeleteProject = async (projectId: number) => {
+    await api.deleteProject(projectId);
+    setProjects((current) => current.filter((project) => project.id !== projectId));
+    setDocuments((current) => current.map((document) => document.project_id === projectId
+      ? { ...document, project_id: null }
+      : document));
+    setTrashedDocuments((current) => current.map((document) => document.project_id === projectId
+      ? { ...document, project_id: null }
+      : document));
+  };
+
   const handleMoveReviewer = async (documentId: number, projectId: number | null) => {
-    await api.assignProject(documentId, projectId);
+    const document = documents.find((item) => item.id === documentId);
+    if (!document || document.project_id === projectId) return;
     setDocuments((current) => current.map((document) => (
       document.id === documentId ? { ...document, project_id: projectId } : document
     )));
-    const updatedProjects = await api.getProjects();
-    setProjects(updatedProjects);
+    setProjects((current) => current.map((project) => ({
+      ...project,
+      document_count: Math.max(0, project.document_count
+        - (document.project_id === project.id ? 1 : 0)
+        + (projectId === project.id ? 1 : 0)),
+    })));
+    try {
+      await api.assignProject(documentId, projectId);
+    } catch (error) {
+      setDocuments((current) => current.map((item) => (
+        item.id === documentId ? { ...item, project_id: document.project_id ?? null } : item
+      )));
+      setProjects((current) => current.map((project) => ({
+        ...project,
+        document_count: Math.max(0, project.document_count
+          + (document.project_id === project.id ? 1 : 0)
+          - (projectId === project.id ? 1 : 0)),
+      })));
+      throw error;
+    }
   };
 
   const handleGenerateConceptMap = async (documentId: number | null = selectedDocId) => {
@@ -281,11 +328,39 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
 
   const currentDoc = documents.find((d) => d.id === selectedDocId);
   const isGeneratingMap = generatingMapDocId === selectedDocId;
+  const processingDocumentIds = documents
+    .filter((document) => document.processing_status === 'processing')
+    .map((document) => document.id)
+    .join(',');
+
+  useEffect(() => {
+    const documentIds = processingDocumentIds.split(',').filter(Boolean).map(Number);
+    if (!documentIds.length) return;
+    let active = true;
+    let timeoutId: number | undefined;
+    const refreshStatus = async () => {
+      const refreshed = await Promise.allSettled(documentIds.map((id) => api.getDocument(id)));
+      if (!active) return;
+      const updates = refreshed.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+      if (updates.length) {
+        setDocuments((current) => current.map((document) => updates.find((updated) => updated.id === document.id) ?? document));
+      }
+      const stillProcessing = refreshed.some((result) => result.status === 'rejected'
+        || (result.status === 'fulfilled' && result.value.processing_status === 'processing'));
+      if (stillProcessing) timeoutId = window.setTimeout(refreshStatus, 1400);
+    };
+    timeoutId = window.setTimeout(refreshStatus, 900);
+    return () => {
+      active = false;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+  }, [processingDocumentIds]);
 
   const openReviewer = (documentId: number) => {
     if (trashedDocuments.some((document) => document.id === documentId)) return;
     setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
     setSelectedDocId(documentId);
+    setIsOriginalPreviewOpen(false);
     setActiveView('workspace');
     setIsChatOpen(true);
   };
@@ -305,6 +380,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         setDocuments((current) => current.filter((item) => item.id !== documentId));
         setTrashedDocuments((current) => [document, ...current.filter((item) => item.id !== documentId)]);
         setRecentDocumentIds((current) => current.filter((id) => id !== documentId));
+        if (document.project_id !== null && document.project_id !== undefined) {
+          setProjects((current) => current.map((project) => project.id === document.project_id
+            ? { ...project, document_count: Math.max(0, project.document_count - 1) }
+            : project));
+        }
         setActiveView('trash');
         if (selectedDocId === documentId) {
           setSelectedDocId(documents.find((item) => item.id !== documentId)?.id ?? null);
@@ -318,14 +398,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
         setTrashedDocuments((current) => current.filter((item) => item.id !== documentId));
         setDocuments((current) => [document, ...current.filter((item) => item.id !== documentId)]
           .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()));
+        if (document.project_id !== null && document.project_id !== undefined) {
+          setProjects((current) => current.map((project) => project.id === document.project_id
+            ? { ...project, document_count: project.document_count + 1 }
+            : project));
+        }
       } else {
         await api.deleteDocumentForever(documentId);
         setTrashedDocuments((current) => current.filter((item) => item.id !== documentId));
         setRecentDocumentIds((current) => current.filter((id) => id !== documentId));
-        await removeReviewerCover(documentId).catch(() => undefined);
+        void removeReviewerCover(documentId).catch(() => undefined);
       }
 
-      api.getProjects().then(setProjects).catch(() => undefined);
       return true;
     } catch (error) {
       setTrashError(error instanceof Error ? error.message : 'The Trash action could not be completed.');
@@ -343,6 +427,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
   const askAboutReviewer = (documentId: number) => {
     setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
     setSelectedDocId(documentId);
+    setIsOriginalPreviewOpen(false);
     setActiveView('workspace');
     setIsChatOpen(true);
   };
@@ -411,10 +496,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
       {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
-        onShowDashboard={() => { setActiveView('dashboard'); setIsChatOpen(false); }}
-        onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); }}
-        onShowTrash={() => { setActiveView('trash'); setIsChatOpen(false); }}
-        onShowSettings={() => { setActiveView('settings'); setIsChatOpen(false); }}
+        onShowDashboard={() => { setActiveView('dashboard'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
+        onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
+        onShowTrash={() => { setActiveView('trash'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
+        onShowSettings={() => { setActiveView('settings'); setIsChatOpen(false); setIsOriginalPreviewOpen(false); }}
         trashedDocuments={trashedDocuments}
         trashShortcutLabel={`${modifierLabel}+3`}
         user={user}
@@ -471,6 +556,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
                 {isChatOpen ? <Layers className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                 <span className="hidden sm:inline">{isChatOpen ? 'Mind map' : 'Chat'}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setIsOriginalPreviewOpen(true)}
+                className="btn btn-sm gap-2 border-slate-700 bg-slate-900 text-slate-300"
+                title="Preview original file"
+                aria-label="Preview original file"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Original file</span>
+              </button>
               {!isChatOpen && conceptMap && (
                 <button
                   onClick={() => setIsDetailsOpen((open) => !open)}
@@ -526,7 +621,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
           {activeView === 'workspace' && !isChatOpen && isGeneratingMap && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-base-100/75 p-5 backdrop-blur-sm" role="status" aria-live="polite">
               <div className="mindmap-refresh-spinner" aria-hidden="true" />
-              <p className="text-sm font-medium text-base-content/75">Refreshing your mind map…</p>
+              <p className="text-sm font-medium text-base-content/75">{conceptMap ? 'Refreshing your mind map…' : 'Creating your mind map…'}</p>
             </div>
           )}
 
@@ -546,6 +641,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
               projects={projects}
               onOpenReviewer={openReviewer}
               onCreateFolder={handleCreateProject}
+              onRenameFolder={handleRenameProject}
+              onDeleteFolder={handleDeleteProject}
               onMoveReviewer={handleMoveReviewer}
               onTrashReviewer={onTrashReviewer}
               trashActionDocumentId={trashAction?.action === 'trash' ? trashAction.documentId : null}
@@ -566,6 +663,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
               key={currentDoc.id}
               documentId={currentDoc.id}
               filename={currentDoc.filename}
+              isProcessing={currentDoc.processing_status === 'processing'}
+              hasProcessingError={currentDoc.processing_status === 'error'}
             />
           ) : !currentDoc ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
@@ -625,6 +724,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpda
           )}
         </div>
       </main>
+      {isOriginalPreviewOpen && currentDoc && activeView === 'workspace' && <OriginalFilePreview
+        documentId={currentDoc.id}
+        filename={currentDoc.filename}
+        onClose={() => setIsOriginalPreviewOpen(false)}
+      />}
       {isWarmFilterOn && <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[80] bg-amber-200/20 mix-blend-multiply" />}
       <CommandPalette
         open={isCommandPaletteOpen}
