@@ -1,0 +1,94 @@
+import React, { memo } from 'react';
+import { Handle, Position } from '@xyflow/react';
+import { BookOpen, Sparkles, Layers } from 'lucide-react';
+import type { ConceptNodeData } from '../types';
+
+interface ConceptNodeProps {
+  data: ConceptNodeData;
+  selected?: boolean;
+}
+
+export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, selected }) => {
+  const isRoot = data.node_type === 'root';
+  const isSubconcept = data.node_type === 'subconcept';
+
+  const getNodeStyles = () => {
+    if (isRoot) {
+      return {
+        card: selected
+          ? 'bg-blue-950/80 border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.6)] ring-2 ring-blue-400'
+          : 'bg-slate-900/90 border-blue-500/60 shadow-[0_4px_20px_rgba(59,130,246,0.2)] hover:border-blue-400',
+        badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+        icon: <Sparkles className="w-4 h-4 text-blue-400" />,
+        label: 'text-blue-100 font-bold text-base',
+      };
+    }
+    if (isSubconcept) {
+      return {
+        card: selected
+          ? 'bg-slate-800 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5)] ring-2 ring-cyan-400'
+          : 'bg-slate-900/80 border-slate-700/80 shadow-md hover:border-slate-500',
+        badge: 'bg-slate-800 text-slate-300 border-slate-700',
+        icon: <Layers className="w-3.5 h-3.5 text-slate-400" />,
+        label: 'text-slate-200 font-medium text-xs',
+      };
+    }
+    // Default concept
+    return {
+      card: selected
+        ? 'bg-indigo-950/80 border-indigo-400 shadow-[0_0_22px_rgba(99,102,241,0.6)] ring-2 ring-indigo-400'
+        : 'bg-slate-900/90 border-indigo-500/40 shadow-lg hover:border-indigo-400',
+      badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      icon: <BookOpen className="w-3.5 h-3.5 text-indigo-400" />,
+      label: 'text-slate-100 font-semibold text-sm',
+    };
+  };
+
+  const style = getNodeStyles();
+
+  return (
+    <div
+      className={`group relative rounded-xl border p-3.5 transition-all duration-200 cursor-pointer backdrop-blur-md min-w-[180px] max-w-[260px] ${style.card}`}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-blue-400 !w-2.5 !h-2.5 !border-2 !border-slate-900 transition-transform group-hover:scale-125"
+      />
+
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-1.5">
+          {style.icon}
+          <span
+            className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-full border ${style.badge}`}
+          >
+            {data.node_type}
+          </span>
+        </div>
+        {data.source_chunk_ids?.length > 0 && (
+          <span className="text-[10px] text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/60 font-mono">
+            {data.source_chunk_ids.length} src
+          </span>
+        )}
+      </div>
+
+      <h3 className={`line-clamp-2 leading-snug tracking-tight ${style.label}`}>
+        {data.label}
+      </h3>
+
+      {data.explanation && (
+        <p className="mt-1 text-slate-400 text-xs line-clamp-2 leading-relaxed">
+          {data.explanation}
+        </p>
+      )}
+
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-blue-400 !w-2.5 !h-2.5 !border-2 !border-slate-900 transition-transform group-hover:scale-125"
+      />
+    </div>
+  );
+});
+
+ConceptNodeComponent.displayName = 'ConceptNodeComponent';
