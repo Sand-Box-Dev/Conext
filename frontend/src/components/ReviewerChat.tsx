@@ -83,8 +83,8 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
   const suggestions = ['Summarize the main ideas', 'Explain a difficult concept', 'What should I remember?'];
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col bg-[#0b0f17]">
-      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+    <section className="conext-chat flex min-h-0 flex-1 flex-col bg-[#0b0f17]">
+      <div className="chat-transcript mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
         {isLoadingHistory && messages.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
             <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />Loading saved conversation…
@@ -94,11 +94,11 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-slate-200">
               <BookOpenText className="h-6 w-6" />
             </div>
-            <h2 className="text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">Where should we begin?</h2>
+            <h2 className="chat-greeting text-2xl font-medium tracking-tight text-slate-100 sm:text-3xl">Where should we begin?</h2>
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
               Ask anything about <span className="text-slate-200">{filename}</span>. Answers are grounded in the reviewer and include page citations.
             </p>
-            <div className="mt-7 w-full rounded-3xl border border-slate-700 bg-slate-900 shadow-lg transition focus-within:border-slate-500">
+            <div className="chat-composer mt-7 w-full rounded-3xl border border-slate-700 bg-slate-900 shadow-lg transition focus-within:border-slate-500">
               <form onSubmit={sendQuestion} className="flex items-center gap-3 px-4 py-3">
                 <input
                   className="min-w-0 flex-1 bg-transparent py-1 text-sm text-white outline-none placeholder:text-slate-500"
@@ -129,9 +129,9 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
             <div className="flex-1 space-y-7 overflow-y-auto py-8" aria-live="polite">
               {messages.map((message, index) => (
                 <div key={`${index}-${message.role}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[90%] sm:max-w-[82%] ${message.role === 'user' ? 'rounded-3xl bg-slate-800 px-5 py-3.5 text-slate-100' : 'text-slate-200'}`}>
+                  <div className={`max-w-[90%] sm:max-w-[82%] ${message.role === 'user' ? 'user-question rounded-3xl bg-slate-800 px-5 py-3.5 text-slate-100' : 'text-slate-200'}`}>
                     {message.role === 'assistant' ? (
-                      <div className="text-sm leading-7">
+                      <div className="assistant-answer text-sm leading-7">
                         <ReactMarkdown
                           remarkPlugins={[remarkMath]}
                           rehypePlugins={[rehypeKatex]}
@@ -146,7 +146,7 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
                     {message.citations && message.citations.length > 0 && (
                       <div className="mt-4 space-y-2">
                         {message.citations.map((citation) => (
-                          <details key={citation.passage_id} className="collapse collapse-arrow rounded-xl border border-slate-800 bg-slate-950/70">
+                      <details key={citation.passage_id} className="answer-citation collapse collapse-arrow rounded-xl border border-slate-800 bg-slate-950/70">
                             <summary className="collapse-title min-h-0 py-2 text-[11px] font-medium text-primary">
                               Passage {citation.passage_id} · Page {citation.page_number}
                             </summary>
@@ -162,7 +162,7 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
               <div ref={endRef} />
             </div>
             {error && <div role="alert" className="alert alert-error mb-3 py-2 text-xs">{error}</div>}
-            <form onSubmit={sendQuestion} className="mb-4 rounded-3xl border border-slate-700 bg-slate-900 shadow-lg transition focus-within:border-slate-500">
+            <form onSubmit={sendQuestion} className="chat-composer mb-4 rounded-3xl border border-slate-700 bg-slate-900 shadow-lg transition focus-within:border-slate-500">
               <div className="flex items-center gap-3 px-4 py-3">
                 <input
                   className="min-w-0 flex-1 bg-transparent py-1 text-sm text-white outline-none placeholder:text-slate-500"

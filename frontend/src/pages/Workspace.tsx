@@ -6,6 +6,8 @@ import {
   FileSearch,
   MessageCircle,
   PanelRight,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { ConceptMap } from '../components/ConceptMap';
@@ -23,6 +25,10 @@ import type {
 } from '../types';
 
 export const Workspace: React.FC = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('conext.theme');
+    return saved === 'dark' ? 'dark' : 'light';
+  });
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [recentDocumentIds, setRecentDocumentIds] = useState<number[]>(() => {
@@ -62,6 +68,10 @@ export const Workspace: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('conext.recent-reviewers', JSON.stringify(recentDocumentIds));
   }, [recentDocumentIds]);
+
+  useEffect(() => {
+    localStorage.setItem('conext.theme', theme);
+  }, [theme]);
 
   // Load initial health and documents
   const loadInitialData = useCallback(async () => {
@@ -250,7 +260,7 @@ export const Workspace: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0b0f17] text-slate-100 font-sans">
+    <div data-theme={theme} className="conext-app flex h-screen w-screen overflow-hidden bg-[#0b0f17] text-slate-100 font-sans">
       {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
@@ -357,6 +367,15 @@ export const Workspace: React.FC = () => {
               </button>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+            className="btn btn-sm btn-square border-slate-700 bg-slate-900 text-slate-300"
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? <Moon className="h-4 w-4" strokeWidth={1.8} /> : <Sun className="h-4 w-4" strokeWidth={1.8} />}
+          </button>
         </header>
 
         {/* Workspace Canvas / States */}
