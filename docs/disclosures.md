@@ -1,60 +1,21 @@
 # Disclosures
 
-This document provides a transparent overview of the architecture, models, libraries, APIs, and AI tooling utilized across the **Notepad AI** ecosystem.
+## Models Used
 
----
+The primary models are `qwen3.5:4b` from Alibaba Cloud and `gemma4:31b-cloud` from Google Deepmind for testing quickly, served through Ollama. It is the default and can be reconfigured. It runs on a local Ollama runtime at `http://127.0.0.1:11434` and handles concept map extraction, reviewer document chat with SSE streaming, and study material synthesis. The system also uses a TF-IDF sparse embedding model from Scikit-learn, running locally in Python on the CPU. It provides sublinear term-frequency passage representation, semantic diversity clustering, and passage retrieval ranking.
 
-## 1. Models Used
+## Backend Technologies
 
-| Model | Provider / Engine | Role & Purpose | Deployment |
-| :--- | :--- | :--- | :--- |
-| **`qwen3.5:4b`** *(Default / Configurable)* | Alibaba Cloud / Ollama | Primary local LLM for concept map extraction, reviewer document chat with SSE streaming, and study material synthesis. | Local Ollama Runtime (`http://127.0.0.1:11434`) |
-| **`gemma4:31b-cloud`** *(Supported Alternative)* | Google / Ollama | Advanced local reasoning and essay rubric evaluation. | Local Ollama Runtime |
-| **TF-IDF Sparse Embedding Model** | Scikit-learn (Local Python) | Sublinear term-frequency passage representation, semantic diversity clustering, and passage retrieval ranking. | On-device CPU Execution |
+The backend is written in Python 3.10 or later and has been tested up to Python 3.14. The API layer uses FastAPI 0.115+, which provides an asynchronous REST API and Server-Sent Events through `StreamingResponse`, and it runs on Uvicorn as the ASGI server. Database access goes through SQLAlchemy 2.0+, with dual-engine session management and failover pools. PyMuPDF (`fitz` 1.25+) extracts native PDF text and layout. Scikit-learn and NumPy handle vector manipulation, cosine metrics, and clustering. For security, the system uses `bcrypt` for a salted offline credential cache and PyJWT for JWT verification. HTTPX is the async HTTP client connecting FastAPI to Ollama and Supabase, and Pydantic v2 provides strict schema validation and structured JSON model responses.
 
----
+## Frontend Technologies
 
-## 2. Technologies and Frameworks
+The frontend is built with React 19 and TypeScript and bundled with Vite 8+. Styling combines Tailwind CSS, DaisyUI 5, and Vanilla CSS utility tokens. Graph visualization relies on `@xyflow/react` (React Flow 12+), with Dagre calculating directed graph layouts. Typography and math rendering use KaTeX, `react-markdown`, `remark-math`, and `rehype-katex`, and icons come from Lucide React.
 
-### Backend
-* **Language & Runtime**: Python 3.10+ (Tested up to Python 3.14)
-* **API Framework**: FastAPI 0.115+ (Asynchronous REST API, Server-Sent Events with `StreamingResponse`)
-* **ORM & Database Toolkit**: SQLAlchemy 2.0+ (Dual-engine session management, failover pools)
-* **Document Parsing**: PyMuPDF (`fitz` 1.25+) for native PDF stream text and layout extraction
-* **Data Science & ML**: Scikit-learn, NumPy for vector manipulation, cosine metrics, and clustering
-* **Password Hashing & Security**: `bcrypt` (Salted offline credential cache), PyJWT (JWT verification)
-* **HTTP Client**: HTTPX (Async HTTP client connecting FastAPI to Ollama and Supabase)
-* **Validation**: Pydantic v2 (Strict schema validation and structured JSON model responses)
-* **Server**: Uvicorn (ASGI web server)
+## APIs and Cloud Services
 
-### Frontend
-* **Core Framework**: React 19 with TypeScript
-* **Build System**: Vite 8+
-* **Styling & Design System**: Tailwind CSS, DaisyUI 5, Vanilla CSS utility tokens
-* **Graph Visualization**: `@xyflow/react` (React Flow 12+), Dagre (Directed graph layout calculation)
-* **Typography & Math Rendering**: KaTeX, `react-markdown`, `remark-math`, `rehype-katex`
-* **Icons**: Lucide React
+The Supabase Authentication API is the cloud identity service for user signup, login, session tokens, and password reset flows, and it is accessed through the `supabase-py` SDK (`supabase==2.13.0`). Data is stored in a hosted Supabase PostgreSQL cluster with SSL enforced (`sslmode=require`) and connection pooling through `psycopg2-binary`. The Ollama local REST API runs on port 11434 and exposes `/api/tags`, `/api/chat`, and `/api/generate` for prompt execution and token streaming.
 
----
+## AI Development Tools
 
-## 3. APIs and Cloud Services
-
-* **Supabase Authentication API**:
-  - Cloud identity service for user signup, login, session tokens, and password reset flows.
-  - SDK: `supabase-py` (`supabase==2.13.0`).
-* **Supabase PostgreSQL Database**:
-  - Hosted PostgreSQL database cluster with SSL enforcement (`sslmode=require`).
-  - Connection pooling via psycopg2-binary.
-* **Ollama Local REST API**:
-  - HTTP-based API running on port 11434 (`/api/tags`, `/api/chat`, `/api/generate`) for prompt execution and token streaming.
-
----
-
-## 4. AI Development Tools
-
-* **Google DeepMind Antigravity IDE**:
-  - Advanced agentic pair-programming IDE environment utilized for developing, debugging, refactoring, and verifying the application architecture.
-* **Ollama CLI**:
-  - Open-source model serving framework used for pulling, quantizing, and executing GGUF model weights on consumer hardware.
-* **Bcrypt & Scikit-learn Local Tooling**:
-  - Offline mathematical and cryptographic toolchains used to ensure 100% offline parity for AI vector search and user verification.
+Development used the ChatGPT Codex CLI and Google Antigravity IDE, both are agentic pair-programming environment for developing, debugging, refactoring, and verifying the application architecture. The Ollama CLI, an open-source model serving framework, pulls, quantizes, and runs GGUF model weights on consumer hardware. Bcrypt and Scikit-learn serve as local tooling, providing offline mathematical and cryptographic toolchains that keep AI vector search and user verification fully offline.
