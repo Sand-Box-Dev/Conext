@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
-from ..schemas import SignUpRequest, LoginRequest, AuthTokenResponse, UserProfileResponse
+from ..schemas import SignUpRequest, LoginRequest, AuthTokenResponse, UserProfileResponse, UpdateProfileRequest
 from ..auth import supabase_anon, supabase_admin, get_current_user
 
 logger = logging.getLogger(__name__)
@@ -144,5 +144,36 @@ def get_current_user_profile(user: Dict[str, Any] = Depends(get_current_user)):
     return UserProfileResponse(
         id=user["id"],
         email=user.get("email"),
-        role=user.get("role", "authenticated")
+        role=user.get("role", "authenticated"),
+        display_name=user.get("display_name"),
     )
+
+
+@router.patch("/me", response_model=UserProfileResponse)
+def update_current_user_profile(
+    request: UpdateProfileRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    if not supabase_admin:
+        raise HTTPException(status_code=503, detail="Profile updates are unavailable because Supabase Admin is not configured.")
+    if request.display_name is None and request.password is None:
+        raise HTTPException(status_code=400, detail="Provide a display name or new password.")
+    attributes: Dict[str, Any] = {}
+    if request.display_name is not None:
+        name = request.display_name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Name cannot be blank.")
+        attributes["user_metadata"] = {"display_name": name}
+    if request.password is not None:
+        attributes["password"] = request.password
+    try:
+        result = supabase_admin.auth.admin.update_user_by_id(user["id"], attributes)
+        updated = result.user
+        metadata = updated.user_metadata or {}
+        return UserProfileResponse(
+            id=str(updated.id), email=updated.email, role=updated.role or "authenticated",
+            display_name=metadata.get("display_name"),
+        )
+    except Exception as error:
+        logger.error("Profile update failed: %s", error)
+        raise HTTPException(status_code=400, detail="Could not update the account settings.")

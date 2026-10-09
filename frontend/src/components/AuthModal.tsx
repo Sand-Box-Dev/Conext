@@ -76,24 +76,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
   return (
     <div className="min-h-screen w-screen flex items-center justify-center bg-[#0b0f17] relative overflow-hidden select-none p-4">
       {/* Dynamic Ambient Background Glows */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600/20 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[160px] pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-slate-500/20 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-slate-500/20 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-slate-500/10 rounded-full blur-[160px] pointer-events-none" />
 
       {/* Main Container Card */}
       <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-2xl border border-slate-800/80 rounded-2xl shadow-2xl p-8 z-10 transition-all">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-cyan-500 shadow-lg shadow-indigo-500/25 mb-4">
+          <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-700 via-slate-800 to-black shadow-lg shadow-black/25 mb-4">
             <Brain className="w-8 h-8 text-white" />
             <div className="absolute -bottom-1 -right-1 p-1 bg-slate-900 rounded-full border border-slate-800">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <Sparkles className="w-3.5 h-3.5 text-slate-300" />
             </div>
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             Conext
-            <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20">
               AI Map
             </span>
           </h1>
@@ -112,7 +112,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
             }}
             className={`py-2 text-sm font-medium rounded-lg transition-all ${
               mode === 'login'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                ? 'bg-slate-900 text-white shadow-md shadow-black/30'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -126,7 +126,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
             }}
             className={`py-2 text-sm font-medium rounded-lg transition-all ${
               mode === 'signup'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                ? 'bg-slate-900 text-white shadow-md shadow-black/30'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -164,7 +164,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="developer@conext.ai"
-                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
               />
             </div>
           </div>
@@ -182,7 +182,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
               />
               <button
                 type="button"
@@ -208,7 +208,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all"
                 />
               </div>
             </div>
@@ -218,7 +218,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-medium text-sm shadow-lg shadow-indigo-600/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-slate-700 to-black hover:from-slate-800 hover:to-black text-white font-medium text-sm shadow-lg shadow-black/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -254,12 +254,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onContinueAsGue
         {/* Footer Feature Badges */}
         <div className="mt-8 pt-6 border-t border-slate-800/60 grid grid-cols-3 gap-2 text-center text-xs text-slate-500">
           <div className="flex flex-col items-center gap-1">
-            <ShieldCheck className="w-4 h-4 text-indigo-400" />
+            <ShieldCheck className="w-4 h-4 text-slate-500" />
             <span>Supabase Auth</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <Cpu className="w-4 h-4 text-cyan-400" />
-            <span>Local Ollama</span>
+            <Cpu className="w-4 h-4 text-slate-500" />
+            <span>Local AI</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Database className="w-4 h-4 text-emerald-400" />

@@ -3,7 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { BookOpenText, LoaderCircle, Send } from 'lucide-react';
+import { ArrowUp, BookOpenText, LoaderCircle } from 'lucide-react';
 import { api } from '../services/api';
 import type { ReviewerCitation } from '../types';
 
@@ -110,8 +110,8 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
                   aria-label="Question about the reviewer"
                   autoFocus
                 />
-                <button className="btn btn-circle btn-sm btn-primary" type="submit" disabled={!question.trim() || isSending} aria-label="Send question">
-                  {isSending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                <button className="chat-send-button btn btn-circle btn-sm" type="submit" disabled={!question.trim() || isSending} aria-label="Send question">
+                  {isSending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" strokeWidth={2.5} />}
                 </button>
               </form>
             </div>
@@ -173,8 +173,8 @@ export const ReviewerChat: React.FC<ReviewerChatProps> = ({ documentId, filename
                   disabled={isSending}
                   aria-label="Ask a follow-up question"
                 />
-                <button className="btn btn-circle btn-sm btn-primary" type="submit" disabled={!question.trim() || isSending} aria-label="Send question">
-                  {isSending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                <button className="chat-send-button btn btn-circle btn-sm" type="submit" disabled={!question.trim() || isSending} aria-label="Send question">
+                  {isSending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" strokeWidth={2.5} />}
                 </button>
               </div>
               <p className="pb-2 text-center text-[10px] text-slate-500">Chat is saved with this reviewer · answers cite retrieved passages.</p>

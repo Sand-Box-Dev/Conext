@@ -54,7 +54,8 @@ def get_current_user_optional(
                     return {
                         "id": str(user_response.user.id),
                         "email": user_response.user.email,
-                        "role": user_response.user.role or "authenticated"
+                        "role": user_response.user.role or "authenticated",
+                        "display_name": (user_response.user.user_metadata or {}).get("display_name")
                     }
             except Exception as api_err:
                 logger.debug(f"supabase_admin.auth.get_user failed: {api_err}")
@@ -71,6 +72,7 @@ def get_current_user_optional(
                 "id": payload.get("sub"),
                 "email": payload.get("email"),
                 "role": payload.get("role", "authenticated"),
+                "display_name": (payload.get("user_metadata") or {}).get("display_name"),
                 "raw_payload": payload
             }
 

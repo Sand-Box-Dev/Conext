@@ -11,7 +11,9 @@ interface ProjectsProps {
   onOpenReviewer: (documentId: number) => void;
   onCreateFolder: (name: string) => Promise<void>;
   onMoveReviewer: (documentId: number, projectId: number | null) => Promise<void>;
-  onTrashReviewer: (documentId: number) => void;
+  onTrashReviewer: (documentId: number) => Promise<boolean>;
+  trashActionDocumentId: number | null;
+  trashError: string | null;
 }
 
 const formatDate = (date: string) => new Intl.DateTimeFormat(undefined, {
@@ -28,7 +30,7 @@ interface PendingMove {
   projectId: number | null;
 }
 
-export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenReviewer, onCreateFolder, onMoveReviewer, onTrashReviewer }) => {
+export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenReviewer, onCreateFolder, onMoveReviewer, onTrashReviewer, trashActionDocumentId, trashError }) => {
   const [activeFolderId, setActiveFolderId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -189,6 +191,11 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
               </button>
             ))}
           </div>
+          {projects.length === 0 && (
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              No project folders yet. Create one to organize your reviewers, or explore All files below.
+            </p>
+          )}
         </section>
 
         <section className="mt-10">
@@ -232,7 +239,13 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
             </div>
           ) : (
             <div className="py-16 text-center text-sm text-slate-500">
-              {query ? 'No files match your search.' : 'This folder is empty.'}
+              {query
+                ? 'No files match your search.'
+                : documents.length === 0
+                  ? 'Add a reviewer from the sidebar or create a folder to get started.'
+                  : activeFolderId !== null
+                    ? 'This folder is empty. Choose All files above and drag a reviewer here.'
+                    : 'No reviewers yet. Add one from the sidebar to see it here.'}
             </div>
           )}
         </section>
@@ -292,7 +305,16 @@ export const Projects: React.FC<ProjectsProps> = ({ documents, projects, onOpenR
         </div>
       )}
 
-      {pendingTrash && <TrashConfirmDialog filename={pendingTrash.filename} onCancel={() => setPendingTrash(null)} onConfirm={() => { onTrashReviewer(pendingTrash.id); setPendingTrash(null); }} />}
+      {pendingTrash && <TrashConfirmDialog
+        filename={pendingTrash.filename}
+        isLoading={trashActionDocumentId === pendingTrash.id}
+        error={trashError}
+        onCancel={() => setPendingTrash(null)}
+        onConfirm={async () => {
+          const moved = await onTrashReviewer(pendingTrash.id);
+          if (moved) setPendingTrash(null);
+        }}
+      />}
 
       {notice && (
         <div role="status" className="apple-toast fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 text-sm shadow-xl">

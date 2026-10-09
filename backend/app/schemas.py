@@ -15,6 +15,11 @@ class UserProfileResponse(BaseModel):
     id: str
     email: Optional[str] = None
     role: Optional[str] = "authenticated"
+    display_name: Optional[str] = None
+
+class UpdateProfileRequest(BaseModel):
+    display_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    password: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 class SignUpRequest(BaseModel):
     email: EmailStr

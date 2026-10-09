@@ -93,12 +93,12 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
       animated: true,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: '#60a5fa',
+        color: '#737373',
         width: 14,
         height: 14,
       },
       style: {
-        stroke: '#3b82f6',
+        stroke: '#525252',
         strokeWidth: 2,
       },
     }));

@@ -85,8 +85,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         }}
         className={`border-2 border-dashed rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center ${
           dragOver
-            ? 'border-blue-500 bg-blue-500/10'
-            : 'border-slate-700/80 hover:border-blue-500/50 bg-slate-900/40 hover:bg-slate-900/80'
+            ? 'border-slate-500 bg-slate-500/10'
+            : 'border-slate-700/80 hover:border-slate-500/50 bg-slate-900/40 hover:bg-slate-900/80'
         } ${isUploading ? 'opacity-60 pointer-events-none' : ''}`}
       >
         <input
@@ -97,7 +97,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           className="hidden"
         />
 
-        <div className="upload-drop-icon w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-2 text-blue-400">
+        <div className="upload-drop-icon w-9 h-9 rounded-lg bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mb-2 text-slate-500">
           <UploadCloud className="w-5 h-5" />
         </div>
 

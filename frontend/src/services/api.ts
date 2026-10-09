@@ -98,6 +98,19 @@ export const api = {
     return res.json();
   },
 
+  async updateProfile(data: { display_name?: string; password?: string }): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      method: 'PATCH',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not update account settings' }));
+      throw new Error(err.detail || 'Could not update account settings');
+    }
+    return res.json();
+  },
+
   logout() {
     authStorage.clear();
   },
@@ -116,6 +129,47 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to fetch documents');
     return res.json();
+  },
+
+  async getTrashedDocuments(): Promise<DocumentItem[]> {
+    const res = await fetch(`${API_BASE}/documents/trash`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Could not load Trash');
+    return res.json();
+  },
+
+  async moveDocumentToTrash(documentId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/trash`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not move reviewer to Trash' }));
+      throw new Error(err.detail || 'Could not move reviewer to Trash');
+    }
+  },
+
+  async restoreDocument(documentId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}/restore`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not restore reviewer' }));
+      throw new Error(err.detail || 'Could not restore reviewer');
+    }
+  },
+
+  async deleteDocumentForever(documentId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/documents/${documentId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not permanently delete reviewer' }));
+      throw new Error(err.detail || 'Could not permanently delete reviewer');
+    }
   },
 
   async getProjects(): Promise<ProjectFolder[]> {

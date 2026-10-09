@@ -1,21 +1,38 @@
 import os
-import shutil
+import logging
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Document, SourceChunk, ConceptMap, ProjectFolder
+from ..models import Document, SourceChunk, ConceptMap, ProjectFolder, ChatMessage
 from ..schemas import DocumentResponse, ConceptMapResponse
 from ..services.document_service import process_and_store_document
 from ..services.concept_service import extract_and_persist_concept_map, serialize_concept_map
 from ..auth import get_current_user_optional
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+logger = logging.getLogger(__name__)
 
 
 class ProjectAssignment(BaseModel):
     project_id: int | None
+
+
+def _visible_document_query(db: Session, user: Optional[Dict[str, Any]]):
+    query = db.query(Document)
+    if user:
+        query = query.filter((Document.user_id == user["id"]) | (Document.user_id.is_(None)))
+    else:
+        query = query.filter(Document.user_id.is_(None))
+    return query
+
+
+def _get_visible_document(document_id: int, db: Session, user: Optional[Dict[str, Any]]) -> Document:
+    document = _visible_document_query(db, user).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Reviewer not found")
+    return document
 
 
 @router.patch("/{document_id}/project")
@@ -42,12 +59,9 @@ def list_documents(
     db: Session = Depends(get_db),
     user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
 ):
-    query = db.query(Document)
-    if user:
-        # Show documents belonging to current user or shared documents without a user_id
-        query = query.filter((Document.user_id == user["id"]) | (Document.user_id.is_(None)))
-
-    docs = query.order_by(Document.uploaded_at.desc()).all()
+    docs = _visible_document_query(db, user).filter(
+        Document.is_trashed.is_(False)
+    ).order_by(Document.uploaded_at.desc()).all()
     results = []
     for d in docs:
         chunk_count = db.query(SourceChunk).filter(SourceChunk.document_id == d.id).count()
@@ -63,6 +77,76 @@ def list_documents(
             user_id=d.user_id
         ))
     return results
+
+
+@router.get("/trash", response_model=List[DocumentResponse])
+def list_trashed_documents(
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+):
+    docs = _visible_document_query(db, user).filter(
+        Document.is_trashed.is_(True)
+    ).order_by(Document.uploaded_at.desc()).all()
+    return [
+        DocumentResponse(
+            id=document.id,
+            filename=document.filename,
+            uploaded_at=document.uploaded_at,
+            processing_status=document.processing_status,
+            chunk_count=db.query(SourceChunk).filter(SourceChunk.document_id == document.id).count(),
+            has_map=db.query(ConceptMap).filter(ConceptMap.document_id == document.id).first() is not None,
+            project_id=document.project_id,
+            user_id=document.user_id,
+        )
+        for document in docs
+    ]
+
+
+@router.post("/{document_id}/trash", status_code=status.HTTP_204_NO_CONTENT)
+def move_document_to_trash(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+):
+    document = _get_visible_document(document_id, db, user)
+    document.is_trashed = True
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{document_id}/restore", status_code=status.HTTP_204_NO_CONTENT)
+def restore_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+):
+    document = _get_visible_document(document_id, db, user)
+    document.is_trashed = False
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def permanently_delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+):
+    document = _get_visible_document(document_id, db, user)
+    if not document.is_trashed:
+        raise HTTPException(status_code=409, detail="Move the reviewer to Trash before deleting it forever.")
+
+    file_path = os.path.abspath(document.file_path)
+    db.query(ChatMessage).filter(ChatMessage.document_id == document.id).delete(synchronize_session=False)
+    db.delete(document)
+    db.commit()
+
+    try:
+        if os.path.commonpath([UPLOAD_DIR, file_path]) == UPLOAD_DIR and os.path.isfile(file_path):
+            os.remove(file_path)
+    except (OSError, ValueError) as error:
+        logger.warning("Removed reviewer %s from the database but could not remove its file: %s", document_id, error)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post("", response_model=DocumentResponse)
 async def upload_document(

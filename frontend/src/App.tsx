@@ -41,6 +41,11 @@ function App() {
     setIsGuest(false);
   };
 
+  const handleUserUpdated = (updatedUser: UserProfile) => {
+    setUser(updatedUser);
+    authStorage.setUser(updatedUser);
+  };
+
   const handleContinueAsGuest = () => {
     setIsGuest(true);
   };
@@ -49,7 +54,7 @@ function App() {
     return (
       <div className="min-h-screen w-screen bg-[#0b0f17] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs text-slate-400 font-medium tracking-wide">
             Connecting to Conext workspace...
           </span>
@@ -72,6 +77,7 @@ function App() {
     <Workspace
       user={user}
       onLogout={handleLogout}
+      onUserUpdated={handleUserUpdated}
     />
   );
 }

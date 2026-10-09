@@ -16,17 +16,17 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
     if (isRoot) {
       return {
         card: selected
-          ? 'concept-node-selected bg-blue-950/80 border-blue-400 ring-1 ring-blue-300/70'
-          : 'bg-slate-900/90 border-blue-500/60 hover:border-blue-400',
-        badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-        icon: <Sparkles className="w-4 h-4 text-blue-400" />,
-        label: 'text-blue-100 font-bold text-base',
+          ? 'concept-node-selected bg-slate-950/80 border-slate-400 ring-1 ring-slate-300/70'
+          : 'bg-slate-900/90 border-slate-500/60 hover:border-slate-400',
+        badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+        icon: <Sparkles className="w-4 h-4 text-slate-400" />,
+        label: 'text-slate-100 font-bold text-base',
       };
     }
     if (isSubconcept) {
       return {
         card: selected
-          ? 'concept-node-selected bg-slate-800 border-cyan-400 ring-1 ring-cyan-200/70'
+          ? 'concept-node-selected bg-slate-800 border-slate-300 ring-1 ring-slate-200/70'
           : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-500',
         badge: 'bg-slate-800 text-slate-300 border-slate-700',
         icon: <Layers className="w-3.5 h-3.5 text-slate-400" />,
@@ -36,10 +36,10 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
     // Default concept
     return {
       card: selected
-        ? 'concept-node-selected bg-indigo-950/80 border-indigo-400 ring-1 ring-indigo-200/70'
-        : 'bg-slate-900/90 border-indigo-500/40 hover:border-indigo-400',
-      badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-      icon: <BookOpen className="w-3.5 h-3.5 text-indigo-400" />,
+        ? 'concept-node-selected bg-slate-950/80 border-slate-300 ring-1 ring-slate-200/70'
+        : 'bg-slate-900/90 border-slate-500/40 hover:border-slate-400',
+      badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+      icon: <BookOpen className="w-3.5 h-3.5 text-slate-400" />,
       label: 'text-slate-100 font-semibold text-sm',
     };
   };
@@ -53,7 +53,7 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
       <Handle
         type="target"
         position={Position.Top}
-        className="!bg-white !w-2 !h-2 !border-2 !border-blue-400 transition-transform group-hover:scale-110"
+        className="!bg-white !w-2 !h-2 !border-2 !border-slate-400 transition-transform group-hover:scale-110"
       />
 
       <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -85,7 +85,7 @@ export const ConceptNodeComponent: React.FC<ConceptNodeProps> = memo(({ data, se
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!bg-white !w-2 !h-2 !border-2 !border-blue-400 transition-transform group-hover:scale-110"
+        className="!bg-white !w-2 !h-2 !border-2 !border-slate-400 transition-transform group-hover:scale-110"
       />
     </div>
   );

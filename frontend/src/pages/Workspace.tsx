@@ -6,8 +6,7 @@ import {
   FileSearch,
   MessageCircle,
   PanelRight,
-  Sun,
-  Moon,
+  RefreshCw,
 } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { ConceptMap } from '../components/ConceptMap';
@@ -16,12 +15,14 @@ import { ReviewerChat } from '../components/ReviewerChat';
 import { CommandPalette } from '../components/CommandPalette';
 import { Dashboard } from './Dashboard';
 import { Projects } from './Projects';
+import { Settings } from './Settings';
+import { Trash as TrashPage } from './Trash';
 import { api } from '../services/api';
+import { removeReviewerCover } from '../services/coverStorage';
 import type {
   DocumentItem,
   ConceptMapData,
   ConceptDetail,
-  HealthStatus,
   ProjectFolder,
   UserProfile,
 } from '../types';
@@ -29,14 +30,15 @@ import type {
 interface WorkspaceProps {
   user?: UserProfile | null;
   onLogout?: () => void;
+  onUserUpdated?: (user: UserProfile) => void;
 }
 
-export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
+export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout, onUserUpdated }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('conext.theme');
     return saved === 'dark' ? 'dark' : 'light';
   });
-  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [isWarmFilterOn, setIsWarmFilterOn] = useState(() => localStorage.getItem('conext.warm-filter') === 'true');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [recentDocumentIds, setRecentDocumentIds] = useState<number[]>(() => {
     try {
@@ -46,22 +48,24 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
       return [];
     }
   });
-  const [trashedDocumentIds, setTrashedDocumentIds] = useState<number[]>(() => {
+  const legacyTrashIdsRef = useRef<number[] | null>(null);
+  if (legacyTrashIdsRef.current === null) {
     try {
       const saved = JSON.parse(localStorage.getItem('conext.trashed-reviewers') || '[]');
-      return Array.isArray(saved) ? saved.filter((id): id is number => Number.isInteger(id)) : [];
-    } catch { return []; }
-  });
+      legacyTrashIdsRef.current = Array.isArray(saved) ? saved.filter((id): id is number => Number.isInteger(id)) : [];
+    } catch { legacyTrashIdsRef.current = []; }
+  }
+  const [trashedDocuments, setTrashedDocuments] = useState<DocumentItem[]>([]);
+  const [trashAction, setTrashAction] = useState<{ documentId: number; action: 'trash' | 'restore' | 'delete' } | null>(null);
+  const [trashError, setTrashError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectFolder[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<'commands' | 'reviewers'>('commands');
-  const [modifierLabel] = useState(() => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘' : 'Win');
-  const [chatSideView, setChatSideView] = useState<'details' | 'mindmap'>('details');
-  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'workspace'>('dashboard');
+  const [modifierLabel] = useState(() => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘' : 'Ctrl');
+  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'workspace' | 'trash' | 'settings'>('dashboard');
 
   // Concept Map state
   const [conceptMap, setConceptMap] = useState<ConceptMapData | null>(null);
@@ -86,38 +90,52 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
   }, [recentDocumentIds]);
 
   useEffect(() => {
-    localStorage.setItem('conext.trashed-reviewers', JSON.stringify(trashedDocumentIds));
-  }, [trashedDocumentIds]);
-
-  useEffect(() => {
     localStorage.setItem('conext.theme', theme);
   }, [theme]);
 
-  // Load initial health and documents
+  useEffect(() => {
+    localStorage.setItem('conext.warm-filter', String(isWarmFilterOn));
+  }, [isWarmFilterOn]);
+
+  // Load initial documents
   const loadInitialData = useCallback(async () => {
     try {
-      const [h, docs, folders] = await Promise.all([
-        api.getHealth().catch(() => ({
-          status: 'error',
-          ollama_connected: false,
-          ollama_model: 'gemma4:31b-cloud',
-          ollama_model_available: false,
-        })),
+      const [initialDocs, initialFolders] = await Promise.all([
         api.getDocuments().catch(() => []),
         api.getProjects().catch(() => []),
       ]);
-      setHealth(h);
+      const legacyIds = legacyTrashIdsRef.current ?? [];
+      const docsToMigrate = initialDocs.filter((document) => legacyIds.includes(document.id));
+      const migrationResults = await Promise.allSettled(
+        docsToMigrate.map((document) => api.moveDocumentToTrash(document.id)),
+      );
+      const failedLegacyIds = docsToMigrate
+        .filter((_, index) => migrationResults[index].status === 'rejected')
+        .map((document) => document.id);
+      legacyTrashIdsRef.current = failedLegacyIds;
+      if (failedLegacyIds.length) {
+        localStorage.setItem('conext.trashed-reviewers', JSON.stringify(failedLegacyIds));
+      } else {
+        localStorage.removeItem('conext.trashed-reviewers');
+      }
+
+      const [docs, trashed, folders] = await Promise.all([
+        api.getDocuments().catch(() => []),
+        api.getTrashedDocuments().catch(() => []),
+        Promise.resolve(initialFolders),
+      ]);
       setDocuments(docs);
+      setTrashedDocuments(trashed);
       setProjects(folders);
 
       // Auto-select first document if available and none selected
       if (docs.length > 0 && selectedDocId === null) {
-        setSelectedDocId(docs.find((document) => !trashedDocumentIds.includes(document.id))?.id ?? null);
+        setSelectedDocId(docs[0].id);
       }
     } catch (e) {
       console.error(e);
     }
-  }, [selectedDocId, trashedDocumentIds]);
+  }, [selectedDocId]);
 
   useEffect(() => {
     loadInitialData();
@@ -254,7 +272,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
       }
     } catch (err: any) {
       if (selectedDocIdRef.current === documentId) {
-        setMapError(err.message || 'Failed to extract concepts with local Ollama.');
+        setMapError(err.message || 'Could not build the concept map.');
       }
     } finally {
       setGeneratingMapDocId((current) => current === documentId ? null : current);
@@ -265,36 +283,68 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
   const isGeneratingMap = generatingMapDocId === selectedDocId;
 
   const openReviewer = (documentId: number) => {
-    if (trashedDocumentIds.includes(documentId)) return;
+    if (trashedDocuments.some((document) => document.id === documentId)) return;
     setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
     setSelectedDocId(documentId);
     setActiveView('workspace');
-    setIsChatOpen(false);
+    setIsChatOpen(true);
   };
 
-  const onTrashReviewer = (documentId: number) => {
-    setTrashedDocumentIds((current) => current.includes(documentId) ? current : [...current, documentId]);
-    setRecentDocumentIds((current) => current.filter((id) => id !== documentId));
-    setIsTrashOpen(false);
-    if (selectedDocId === documentId) {
-      const next = documents.find((document) => document.id !== documentId && !trashedDocumentIds.includes(document.id));
-      setSelectedDocId(next?.id ?? null);
-      setActiveView('dashboard');
-      setIsChatOpen(false);
+  const runTrashAction = async (
+    documentId: number,
+    action: 'trash' | 'restore' | 'delete',
+  ): Promise<boolean> => {
+    if (trashAction) return false;
+    setTrashAction({ documentId, action });
+    setTrashError(null);
+    try {
+      if (action === 'trash') {
+        const document = documents.find((item) => item.id === documentId);
+        if (!document) throw new Error('Reviewer was not found in your library.');
+        await api.moveDocumentToTrash(documentId);
+        setDocuments((current) => current.filter((item) => item.id !== documentId));
+        setTrashedDocuments((current) => [document, ...current.filter((item) => item.id !== documentId)]);
+        setRecentDocumentIds((current) => current.filter((id) => id !== documentId));
+        setActiveView('trash');
+        if (selectedDocId === documentId) {
+          setSelectedDocId(documents.find((item) => item.id !== documentId)?.id ?? null);
+          setActiveView('dashboard');
+          setIsChatOpen(false);
+        }
+      } else if (action === 'restore') {
+        const document = trashedDocuments.find((item) => item.id === documentId);
+        if (!document) throw new Error('Reviewer was not found in Trash.');
+        await api.restoreDocument(documentId);
+        setTrashedDocuments((current) => current.filter((item) => item.id !== documentId));
+        setDocuments((current) => [document, ...current.filter((item) => item.id !== documentId)]
+          .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()));
+      } else {
+        await api.deleteDocumentForever(documentId);
+        setTrashedDocuments((current) => current.filter((item) => item.id !== documentId));
+        setRecentDocumentIds((current) => current.filter((id) => id !== documentId));
+        await removeReviewerCover(documentId).catch(() => undefined);
+      }
+
+      api.getProjects().then(setProjects).catch(() => undefined);
+      return true;
+    } catch (error) {
+      setTrashError(error instanceof Error ? error.message : 'The Trash action could not be completed.');
+      return false;
+    } finally {
+      setTrashAction(null);
     }
   };
-  const onRestoreReviewer = (documentId: number) => {
-    setTrashedDocumentIds((current) => current.filter((id) => id !== documentId));
-  };
-  const activeDocuments = documents.filter((document) => !trashedDocumentIds.includes(document.id));
-  const trashedDocuments = documents.filter((document) => trashedDocumentIds.includes(document.id));
+
+  const onTrashReviewer = (documentId: number) => runTrashAction(documentId, 'trash');
+  const onRestoreReviewer = (documentId: number) => runTrashAction(documentId, 'restore');
+  const onDeleteForever = (documentId: number) => runTrashAction(documentId, 'delete');
+  const activeDocuments = documents;
 
   const askAboutReviewer = (documentId: number) => {
     setRecentDocumentIds((current) => [documentId, ...current.filter((id) => id !== documentId)]);
     setSelectedDocId(documentId);
     setActiveView('workspace');
     setIsChatOpen(true);
-    setChatSideView('details');
   };
 
   useEffect(() => {
@@ -323,6 +373,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
         setIsCommandPaletteOpen(true);
         return;
       }
+      if (hasModifier && event.shiftKey && key === 'd' && !isTyping) {
+        event.preventDefault();
+        setIsWarmFilterOn((enabled) => !enabled);
+        return;
+      }
+      if (hasModifier && !event.shiftKey && key === 'd' && !isTyping) {
+        event.preventDefault();
+        setTheme((current) => current === 'light' ? 'dark' : 'light');
+        return;
+      }
       if (!hasModifier) return;
       if (key === '1') {
         event.preventDefault();
@@ -334,7 +394,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
         setIsChatOpen(false);
       } else if (key === '3') {
         event.preventDefault();
-        setIsTrashOpen((open) => !open);
+        setActiveView('trash');
+        setIsChatOpen(false);
       } else if (key === 'enter' && selectedDocId !== null) {
         event.preventDefault();
         askAboutReviewer(selectedDocId);
@@ -348,25 +409,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
   return (
     <div data-theme={theme} className="conext-app flex h-screen w-screen overflow-hidden bg-[#0b0f17] text-slate-100 font-sans">
       {/* Left Sidebar */}
-      <Sidebar
+      {activeView !== 'settings' && <Sidebar
         activeView={activeView}
-        onShowDashboard={() => { setActiveView('dashboard'); setIsChatOpen(false); setIsTrashOpen(false); }}
-        onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); setIsTrashOpen(false); }}
+        onShowDashboard={() => { setActiveView('dashboard'); setIsChatOpen(false); }}
+        onShowLibrary={() => { setActiveView('library'); setIsChatOpen(false); }}
+        onShowTrash={() => { setActiveView('trash'); setIsChatOpen(false); }}
+        onShowSettings={() => { setActiveView('settings'); setIsChatOpen(false); }}
         trashedDocuments={trashedDocuments}
-        isTrashOpen={isTrashOpen}
-        onToggleTrash={() => setIsTrashOpen((open) => !open)}
-        onRestoreReviewer={onRestoreReviewer}
         trashShortcutLabel={`${modifierLabel}+3`}
-        onUploadSuccess={handleUpload}
-        isUploading={isUploading}
         user={user}
         onLogout={onLogout}
-      />
+      />}
 
       {/* Center Main Workspace */}
       <main className="flex-1 flex flex-col h-full min-w-0 relative">
         {/* Workspace Top Toolbar */}
-        <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-6 flex items-center justify-between z-10">
+        {activeView !== 'settings' && <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3 min-w-0">
             {activeView === 'dashboard' ? (
               <div>
@@ -377,6 +435,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
                 <h1 className="text-sm font-bold text-white">Library</h1>
                 <p className="text-[11px] text-slate-400">Reviewers organized in project folders</p>
               </div>
+            ) : activeView === 'trash' ? (
+              <div><h1 className="text-sm font-bold text-white">Trash</h1><p className="text-[11px] text-slate-400">Restore or remove reviewers</p></div>
+            ) : activeView === 'settings' ? (
+              <div><h1 className="text-sm font-bold text-white">Settings</h1><p className="text-[11px] text-slate-400">Account and keyboard shortcuts</p></div>
             ) : currentDoc ? (
               <div>
                 <h1 className="text-sm font-bold text-white truncate max-w-md">
@@ -402,14 +464,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
           {currentDoc && activeView === 'workspace' && (
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsChatOpen((open) => {
-                  if (!open) setChatSideView('details');
-                  return !open;
-                })}
+                onClick={() => setIsChatOpen((open) => !open)}
                 className={`btn btn-sm gap-2 border-slate-700 ${isChatOpen ? 'bg-slate-800 text-white' : 'bg-slate-900 text-slate-300'}`}
+                aria-label={isChatOpen ? 'Switch to mind map' : 'Switch to chat'}
               >
-                <MessageCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">{isChatOpen ? 'Close chat' : 'Ask reviewer'}</span>
+                {isChatOpen ? <Layers className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                <span className="hidden sm:inline">{isChatOpen ? 'Mind map' : 'Chat'}</span>
               </button>
               {!isChatOpen && conceptMap && (
                 <button
@@ -422,41 +482,28 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
                   <span className="hidden lg:inline">{isDetailsOpen ? 'Hide details' : 'Show details'}</span>
                 </button>
               )}
-              <button
+              {!isChatOpen && <button
                 onClick={() => void handleGenerateConceptMap()}
                 disabled={isGeneratingMap}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all duration-200 ${
-                  isGeneratingMap
-                    ? 'bg-blue-600/50 text-blue-200 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95'
-                }`}
+                className={`mindmap-action btn btn-sm gap-2 rounded-xl px-4 font-medium shadow-sm transition-colors ${isGeneratingMap ? 'cursor-wait opacity-60' : ''}`}
               >
                 {isGeneratingMap ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Analyzing with Local Ollama...</span>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <span>Building map…</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-blue-300" />
+                    {conceptMap ? <RefreshCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                     <span>
-                      {conceptMap ? 'Regenerate Concept Map' : 'Generate Concept Map'}
+                      {conceptMap ? 'Regenerate map' : 'Generate mind map'}
                     </span>
                   </>
                 )}
-              </button>
+              </button>}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
-            className="btn btn-sm btn-square border-slate-700 bg-slate-900 text-slate-300"
-            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {theme === 'light' ? <Moon className="h-4 w-4" strokeWidth={1.8} /> : <Sun className="h-4 w-4" strokeWidth={1.8} />}
-          </button>
-        </header>
+        </header>}
 
         {/* Workspace Canvas / States */}
         <div className="flex-1 relative overflow-hidden flex">
@@ -476,20 +523,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
             </div>
           )}
 
-          {isGeneratingMap && (
-            <div className="absolute inset-0 z-20 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
-              <div className="relative mb-5">
-                <div className="w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center animate-pulse">
-                  <Sparkles className="w-8 h-8 text-blue-400" />
-                </div>
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 opacity-20 blur-lg animate-pulse" />
-              </div>
-              <h2 className="text-base font-bold text-white mb-1.5">
-                Reading passages & extracting concepts...
-              </h2>
-              <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                Local model <span className="text-blue-400 font-mono">{health?.ollama_model || 'gemma4:31b-cloud'}</span> is verifying source evidence and building relationships completely offline.
-              </p>
+          {activeView === 'workspace' && !isChatOpen && isGeneratingMap && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-base-100/75 p-5 backdrop-blur-sm" role="status" aria-live="polite">
+              <div className="mindmap-refresh-spinner" aria-hidden="true" />
+              <p className="text-sm font-medium text-base-content/75">Refreshing your mind map…</p>
             </div>
           )}
 
@@ -497,6 +534,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
             <Dashboard
               documents={activeDocuments}
               onTrashReviewer={onTrashReviewer}
+              trashActionDocumentId={trashAction?.action === 'trash' ? trashAction.documentId : null}
+              trashError={trashError}
               onOpenReviewer={openReviewer}
               onUploadSuccess={handleUpload}
               isUploading={isUploading}
@@ -509,76 +548,33 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
               onCreateFolder={handleCreateProject}
               onMoveReviewer={handleMoveReviewer}
               onTrashReviewer={onTrashReviewer}
+              trashActionDocumentId={trashAction?.action === 'trash' ? trashAction.documentId : null}
+              trashError={trashError}
+            />
+          ) : activeView === 'trash' ? (
+            <TrashPage
+              documents={trashedDocuments}
+              action={trashAction}
+              error={trashError}
+              onRestore={onRestoreReviewer}
+              onDeleteForever={onDeleteForever}
+            />
+          ) : activeView === 'settings' ? (
+            <Dashboard
+              documents={activeDocuments}
+              onTrashReviewer={onTrashReviewer}
+              trashActionDocumentId={trashAction?.action === 'trash' ? trashAction.documentId : null}
+              trashError={trashError}
+              onOpenReviewer={openReviewer}
+              onUploadSuccess={handleUpload}
+              isUploading={isUploading}
             />
           ) : isChatOpen && currentDoc ? (
-            <>
-              <ReviewerChat
-                key={currentDoc.id}
-                documentId={currentDoc.id}
-                filename={currentDoc.filename}
-              />
-              <aside className="flex w-96 shrink-0 flex-col border-l border-slate-800 bg-slate-900/70">
-                <div className="grid grid-cols-2 gap-1 border-b border-slate-800 p-2" role="tablist" aria-label="Reviewer side panel">
-                  <button
-                    role="tab"
-                    aria-selected={chatSideView === 'details'}
-                    onClick={() => setChatSideView('details')}
-                    className={`btn btn-sm gap-2 ${chatSideView === 'details' ? 'btn-active bg-slate-800 text-white' : 'btn-ghost text-slate-400'}`}
-                  >
-                    <PanelRight className="h-4 w-4" /> Details
-                  </button>
-                  <button
-                    role="tab"
-                    aria-selected={chatSideView === 'mindmap'}
-                    onClick={() => setChatSideView('mindmap')}
-                    className={`btn btn-sm gap-2 ${chatSideView === 'mindmap' ? 'btn-active bg-slate-800 text-white' : 'btn-ghost text-slate-400'}`}
-                  >
-                    <Layers className="h-4 w-4" /> Mind map
-                  </button>
-                </div>
-                {chatSideView === 'details' ? (
-                  <ConceptDetails
-                    detail={conceptDetail}
-                    isLoading={isLoadingDetail}
-                    loadError={conceptDetailError}
-                    isGeneratingExplanation={isGeneratingExplanation}
-                    explanationGenerationError={explanationGenerationError}
-                    onImproveExplanation={() => conceptDetail && void improveExplanation(conceptDetail.id)}
-                    onClose={() => {
-                      setSelectedNodeId(null);
-                      setConceptDetail(null);
-                    }}
-                    emptyHint="Open the Mind map tab and select a concept to see its explanation and source passages."
-                  />
-                ) : conceptMap ? (
-                  <div className="min-h-0 flex-1">
-                    <ConceptMap
-                      nodesData={conceptMap.nodes}
-                      edgesData={conceptMap.edges}
-                      selectedNodeId={selectedNodeId}
-                      onSelectNode={(nodeId) => {
-                        setSelectedNodeId(nodeId);
-                        setIsDetailsOpen(true);
-                        setChatSideView('details');
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-                    <Layers className="mb-3 h-8 w-8 text-slate-600" />
-                    <p className="text-sm font-medium text-slate-300">No mind map yet</p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500">Generate a mind map to browse this reviewer’s concepts here.</p>
-                    <button
-                      onClick={() => void handleGenerateConceptMap(currentDoc.id)}
-                      disabled={isGeneratingMap}
-                      className="btn btn-sm btn-primary mt-4"
-                    >
-                      {isGeneratingMap ? 'Generating…' : 'Generate mind map'}
-                    </button>
-                  </div>
-                )}
-              </aside>
-            </>
+            <ReviewerChat
+              key={currentDoc.id}
+              documentId={currentDoc.id}
+              filename={currentDoc.filename}
+            />
           ) : !currentDoc ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
               <FileSearch className="w-16 h-16 stroke-[1.2] text-slate-700 mb-4" />
@@ -599,7 +595,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
               />
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/90 px-6 py-5 text-center shadow-xl">
-                  <Layers className="mx-auto mb-3 h-7 w-7 text-blue-400" />
+                  <Layers className="mx-auto mb-3 h-7 w-7 text-slate-500" />
                   <h2 className="text-sm font-semibold text-slate-200">Your mind map will appear here</h2>
                   <p className="mt-1 text-xs text-slate-400">Generate a map from the toolbar when you’re ready.</p>
                 </div>
@@ -637,6 +633,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
           )}
         </div>
       </main>
+      {activeView === 'settings' && <Settings
+        user={user}
+        modifierLabel={modifierLabel}
+        onUserUpdated={onUserUpdated}
+        onBack={() => setActiveView('dashboard')}
+      />}
+      {isWarmFilterOn && <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[80] bg-amber-200/20 mix-blend-multiply" />}
       <CommandPalette
         open={isCommandPaletteOpen}
         mode={paletteMode}
@@ -648,7 +651,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onLogout }) => {
         onOpenReviewer={openReviewer}
         onGoRecent={() => { setActiveView('dashboard'); setIsChatOpen(false); }}
         onGoLibrary={() => { setActiveView('library'); setIsChatOpen(false); }}
-        onOpenTrash={() => setIsTrashOpen(true)}
+        onOpenTrash={() => { setActiveView('trash'); setIsChatOpen(false); }}
         onAskSelected={() => selectedDocId !== null && askAboutReviewer(selectedDocId)}
       />
     </div>

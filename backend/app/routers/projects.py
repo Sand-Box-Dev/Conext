@@ -37,7 +37,10 @@ def list_projects(db: Session = Depends(get_db)):
             id=project.id,
             name=project.name,
             created_at=project.created_at,
-            document_count=len(project.documents),
+            document_count=db.query(Document).filter(
+                Document.project_id == project.id,
+                Document.is_trashed.is_(False),
+            ).count(),
         )
         for project in projects
     ]

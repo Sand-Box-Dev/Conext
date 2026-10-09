@@ -15,6 +15,11 @@ if "project_id" not in document_columns:
             "ALTER TABLE documents ADD COLUMN project_id INTEGER "
             "REFERENCES project_folders(id)"
         ))
+if "is_trashed" not in document_columns:
+    with engine.begin() as connection:
+        connection.execute(text(
+            "ALTER TABLE documents ADD COLUMN is_trashed BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
 
 app = FastAPI(
     title="Conext - AI Concept Mapping & Knowledge API",

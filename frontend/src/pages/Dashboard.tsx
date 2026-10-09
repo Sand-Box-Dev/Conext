@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, BookOpenText, ImagePlus, Trash2 } from 'lucide-react';
+import { ArrowUpRight, ImagePlus, Trash2 } from 'lucide-react';
 import type { DocumentItem } from '../types';
 import { getReviewerCover, saveReviewerCover } from '../services/coverStorage';
 import { DocumentUpload } from '../components/DocumentUpload';
@@ -39,7 +39,9 @@ interface DashboardProps {
   onOpenReviewer: (documentId: number) => void;
   onUploadSuccess: (file: File) => Promise<void>;
   isUploading: boolean;
-  onTrashReviewer: (documentId: number) => void;
+  onTrashReviewer: (documentId: number) => Promise<boolean>;
+  trashActionDocumentId: number | null;
+  trashError: string | null;
 }
 
 const formatDate = (date: string) => new Intl.DateTimeFormat(undefined, {
@@ -48,7 +50,7 @@ const formatDate = (date: string) => new Intl.DateTimeFormat(undefined, {
   year: 'numeric',
 }).format(new Date(date));
 
-export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer, onUploadSuccess, isUploading, onTrashReviewer }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer, onUploadSuccess, isUploading, onTrashReviewer, trashActionDocumentId, trashError }) => {
   const [view, setView] = useState<'all' | 'recent'>('all');
   const reviewers = useMemo(() => [...documents].sort(
     (a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime(),
@@ -197,17 +199,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onOpenReviewer,
         </div>
       ) : (
         <div className="flex min-h-64 flex-col items-center justify-center px-6 py-12 text-center">
-          <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800 text-slate-400">
-            <BookOpenText className="h-5 w-5" strokeWidth={1.7} />
-          </span>
           <h2 className="text-sm font-medium text-slate-200">{documents.length ? 'No notes found' : 'No reviewers yet'}</h2>
           <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-500">
-            {documents.length ? 'Try a different search.' : 'Add a document from the sidebar and it will appear here.'}
+            {documents.length ? 'Try a different search.' : 'Add a reviewer from the sidebar, or explore the Library to organize your study materials.'}
           </p>
         </div>
       )}
     </div>
-    {pendingTrash && <TrashConfirmDialog filename={pendingTrash.filename} onCancel={() => setPendingTrash(null)} onConfirm={() => { onTrashReviewer(pendingTrash.id); setPendingTrash(null); }} />}
+    {pendingTrash && <TrashConfirmDialog
+      filename={pendingTrash.filename}
+      isLoading={trashActionDocumentId === pendingTrash.id}
+      error={trashError}
+      onCancel={() => setPendingTrash(null)}
+      onConfirm={async () => {
+        const moved = await onTrashReviewer(pendingTrash.id);
+        if (moved) setPendingTrash(null);
+      }}
+    />}
   </section>
   );
 };

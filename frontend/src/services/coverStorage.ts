@@ -38,3 +38,14 @@ export const saveReviewerCover = async (documentId: number, cover: Blob): Promis
     transaction.onabort = () => reject(transaction.error ?? new Error('Could not save this cover.'));
   });
 };
+
+export const removeReviewerCover = async (documentId: number): Promise<void> => {
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).delete(documentId);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not remove this cover.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Could not remove this cover.'));
+  });
+};

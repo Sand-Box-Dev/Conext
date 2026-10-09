@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index, Boolean, text
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -23,6 +23,7 @@ class Document(Base):
     uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
     processing_status = Column(String(50), default="ready")  # ready, processing, completed, error
     project_id = Column(Integer, ForeignKey("project_folders.id"), nullable=True)
+    is_trashed = Column(Boolean, nullable=False, default=False, server_default=text("false"))
 
     # Relationships
     chunks = relationship("SourceChunk", back_populates="document", cascade="all, delete-orphan")
